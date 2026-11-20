@@ -6,9 +6,10 @@
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Shifter Sprint 7</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" type="image/png" href="img/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:wght@300..800&family=Martian+Mono:wght@300..500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Inter:wght@400;500;600&family=Martian+Mono:wght@300..500&display=swap">
 <style>
 /* Layout: one dark world (after cortexexam.com). Glass header with the people as a pill bar;
    a big display head per view; overview = figures, day-one contracts, swimlane map that draws itself,
@@ -23,7 +24,7 @@
   --green: #52d394; --green-bg: rgba(82, 211, 148, .12);
   --amber: #f1b65a; --amber-bg: rgba(241, 182, 90, .12);
   --f-display: "Funnel Display", "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
-  --f-text: "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
+  --f-text: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono: "Martian Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --r-sm: 8px; --r: 12px; --r-lg: 20px;
   --ease: cubic-bezier(.625, .05, 0, 1);
@@ -31,7 +32,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); }
-body { color: var(--ink); font-family: var(--f-text); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+body { color: var(--ink); font-family: var(--f-text); font-size: 15px; line-height: 1.55; letter-spacing: -.005em; -webkit-font-smoothing: antialiased; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 h1, h2, h3, p { margin: 0; }
 a { color: inherit; text-decoration: none; }
@@ -79,12 +80,13 @@ code { font-family: var(--f-mono); font-size: .82em; color: var(--ink); }
 /* Header */
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: rgba(5, 6, 8, .72); -webkit-backdrop-filter: blur(14px) saturate(1.15); backdrop-filter: blur(14px) saturate(1.15); border-bottom: 1px solid var(--line); }
 .top-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px 20px; min-height: 68px; padding-block: 8px; }
-.brand { display: inline-flex; align-items: baseline; gap: 10px; font-family: var(--f-display); font-weight: 500; font-size: 20px; letter-spacing: -.02em; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--f-display); font-weight: 500; font-size: 20px; letter-spacing: -.02em; }
 .brand .eyebrow { font-size: 11px; white-space: nowrap; }
+.brand .logo { width: 30px; height: 30px; flex: none; border-radius: 50%; transition: transform .8s var(--ease); }
+.brand:hover .logo { transform: rotate(-180deg); }
 .nav { display: flex; justify-content: center; min-width: 0; }
-.nav-inner { display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(236, 238, 242, .05); box-shadow: inset 0 0 0 1px var(--line); overflow-x: auto; scrollbar-width: none; max-width: 100%; }
-.nav-inner::-webkit-scrollbar { display: none; }
-.nav a { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 999px; font-size: 14px; color: var(--ink-2); white-space: nowrap; transition: background-color .3s, color .3s; }
+.nav-inner { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 4px; border-radius: 22px; background: rgba(236, 238, 242, .05); box-shadow: inset 0 0 0 1px var(--line); max-width: 100%; }
+.nav a { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 11px; border-radius: 999px; font-size: 14px; color: var(--ink-2); white-space: nowrap; transition: background-color .3s, color .3s; }
 .nav a:hover { color: var(--ink); }
 .nav a[aria-current="page"] { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
 .nav .cnt { font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-3); }
@@ -96,10 +98,13 @@ code { font-family: var(--f-mono); font-size: .82em; color: var(--ink); }
 .sync.warn .dot { background: var(--amber); }
 .sync .err { color: var(--amber); }
 @keyframes ping { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
-@media (max-width: 1360px) { .sync .txt { display: none; } }
+@media (max-width: 1600px) { .sync .txt { display: none; } }
+@media (max-width: 640px) { .brand .eyebrow { display: none; } }
 @media (max-width: 960px) {
   .top-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .nav { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+  .nav { grid-column: 1 / -1; grid-row: 2; }
+  .nav-inner { width: 100%; }
+  .nav a { flex: 1 0 auto; justify-content: center; }
   .sync .txt { display: none; }
 }
 
@@ -229,6 +234,10 @@ main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); 
 .side ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
 .side li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
 .side ul.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.side li.blink .mini, .side li.blink .pill { animation: blink 1.6s ease-in-out infinite; }
+.side li.blink .mini { border-color: var(--green); color: var(--green); }
+.side li.blink .pill { background: var(--green-bg); color: var(--green); }
+@keyframes blink { 0%, 100% { box-shadow: 0 0 0 0 rgba(82, 211, 148, 0); opacity: 1; } 50% { box-shadow: 0 0 0 6px rgba(82, 211, 148, .28), 0 0 22px rgba(82, 211, 148, .35); opacity: .75; } }
 .side .none { color: var(--ink-3); font-size: 15px; }
 .merged { border-top: 1px solid var(--line); }
 .merged .r { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 16px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background-color .3s; }
@@ -273,6 +282,8 @@ ol.steps li { display: grid; grid-template-columns: 30px 1fr; }
 ol.steps li::before { counter-increment: s; content: counter(s, decimal-leading-zero); font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); padding-top: 4px; }
 ol.steps a { color: var(--ink); border-bottom: 1px solid var(--line-2); }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2), 0 20px 60px rgba(0, 0, 0, .5); padding: 12px 18px; border-radius: 999px; font-size: 14px; z-index: 20; max-width: calc(100vw - 32px); }
+.toast:not([hidden]) { animation: toastIn .6s var(--ease-out); }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 24px); } }
 .toast::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex: none; }
 
 @media (max-width: 1080px) {
@@ -302,7 +313,7 @@ ol.steps a { color: var(--ink); border-bottom: 1px solid var(--line-2); }
 <body>
 <header class="top">
   <div class="wrap top-row">
-    <a class="brand" href="#vue">Shifter <span class="eyebrow">sprint 7</span></a>
+    <a class="brand" href="#vue"><img class="logo" src="img/logo.png" alt="" width="30" height="30">Shifter <span class="eyebrow">sprint 7</span></a>
     <nav class="nav" aria-label="Vues"><div class="nav-inner" id="nav"></div></nav>
     <div class="live"><span class="sync" id="sync"><span class="dot"></span><span class="txt" id="syncText">Lecture du board</span></span><span id="syncCtl"></span></div>
   </div>
@@ -857,7 +868,7 @@ function renderPerson(id) {
   waiting.forEach(t => unmet(t).filter(b => BY[b].who !== id).forEach(b => toReview.set(b, true)));
   const reviews = [...toReview.keys()].map(b => {
     const pr = prsOf(b).find(x => x.state === "OPEN");
-    return `<li>${mini(b)}${pill(view(b))}${pr ? `<a class="ulink" href="${REPO}/pull/${pr.n}" target="_blank" rel="noopener">PR #${pr.n} ↗</a>` : ""}</li>`;
+    return `<li${view(b) === "review" ? ' class="blink"' : ""}>${mini(b)}${pill(view(b))}${pr ? `<a class="ulink" href="${REPO}/pull/${pr.n}" target="_blank" rel="noopener">PR #${pr.n} ↗</a>` : ""}</li>`;
   }).join("");
   const waitMe = new Set();
   mine.filter(t => !isDone(t.n)).forEach(t => dependents(t.n).filter(d => d.who !== id).forEach(d => waitMe.add(d.n)));
@@ -898,7 +909,8 @@ function showDialog() {
   if (fresh) dlg.showModal();
   rollify(dlg);
   if (fresh && G) {
-    G.fromTo(dlg, { opacity: 0, y: 32, scale: .985 }, { opacity: 1, y: 0, scale: 1, duration: .7, ease: "expo.out", clearProps: "transform,opacity" });
+    // Never tween the <dialog> itself: GSAP briefly detaches fixed elements to measure transforms, which drops the modal state.
+    G.fromTo(dlg.querySelector(".dlg"), { opacity: 0, y: 32, scale: .985 }, { opacity: 1, y: 0, scale: 1, duration: .7, ease: "expo.out", clearProps: "transform,opacity" });
     G.from(dlg.querySelectorAll(".shots figure, .img-only img"), { opacity: 0, x: 28, duration: .8, ease: "expo.out", stagger: .05, delay: .08, clearProps: "transform,opacity" });
   }
 }
@@ -981,8 +993,7 @@ async function setManual(s) {
 
 let toastTimer;
 function toast(msg) {
-  const el = document.getElementById("toast"); el.textContent = msg; el.hidden = false;
-  if (G) G.fromTo(el, { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: .6, ease: "expo.out" });
+  const el = document.getElementById("toast"); el.hidden = true; void el.offsetWidth; el.textContent = msg; el.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 4200);
 }
 
