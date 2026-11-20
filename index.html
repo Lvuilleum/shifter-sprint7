@@ -147,13 +147,6 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 /* Heads and sections */
 .pagehead { padding-block: clamp(56px, 9vw, 128px) 0; display: grid; gap: 22px; }
 main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); }
-/* Scroll magnet: when a scroll ends near a section start, it glides onto it */
-html { scroll-snap-type: y proximity; }
-.pagehead { scroll-snap-align: start; scroll-margin-top: 400px; }
-main section { scroll-snap-align: start; scroll-margin-top: 104px; }
-@media (max-width: 1359px) { main section { scroll-margin-top: 150px; } }
-@media (max-width: 820px) { main section { scroll-margin-top: 190px; } }
-@media (prefers-reduced-motion: reduce) { html { scroll-snap-type: none; } }
 .sec-head { display: grid; gap: 14px; margin-bottom: 40px; max-width: 900px; }
 .sec-head .dim { font-size: 17px; }
 
@@ -1224,6 +1217,44 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
     raf = Math.abs(x - cx) + Math.abs(y - cy) > .5 ? requestAnimationFrame(tick) : 0; };
   addEventListener("pointermove", e => { if (e.pointerType === "touch") return; x = e.clientX; y = e.clientY; g.classList.add("on"); if (!raf) raf = requestAnimationFrame(tick); }, { passive: true });
   document.documentElement.addEventListener("pointerleave", () => g.classList.remove("on"));
+})();
+
+/* ---------- scroll magnet ----------
+   Snap points are the titles only (page title + each section head). When a scroll comes to rest,
+   the page glides onto the nearest title, if it is close enough. Choosing the nearest title to
+   where the scroll stopped (not "the next one in that direction") means a short section is
+   never jumped over by a normal scroll; only a big scroll that ends past it goes further. */
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const GAP = 36;                                    // breathing room under the sticky header
+  let target = null, timer = 0;
+  const headerH = () => (document.querySelector(".top")?.offsetHeight || 0);
+  const points = () => {
+    const off = headerH() + GAP, max = document.documentElement.scrollHeight - innerHeight;
+    const ys = [0];
+    document.querySelectorAll("main .sec-head").forEach(h => {
+      if (!h.offsetParent) return;
+      const y = Math.round(h.getBoundingClientRect().top + scrollY - off);
+      if (y > 0 && y <= max) ys.push(y);
+    });
+    return ys;
+  };
+  const settle = () => {
+    if (reduce.matches || document.querySelector("dialog[open]")) return;
+    const y = scrollY;
+    if (target != null) { if (Math.abs(y - target) <= 2) target = null; return; }   // our own glide ended
+    const reach = Math.min(320, innerHeight * .32);
+    let best = null;
+    for (const p of points()) if (Math.abs(p - y) <= reach && (best == null || Math.abs(p - y) < Math.abs(best - y))) best = p;
+    if (best == null || Math.abs(best - y) <= 2) return;
+    target = best;
+    scrollTo({ top: best, behavior: "smooth" });
+  };
+  // Any new input from the person cancels a glide in progress
+  const cancel = () => { target = null; };
+  ["wheel", "touchstart", "keydown", "pointerdown"].forEach(t => addEventListener(t, cancel, { passive: true }));
+  if ("onscrollend" in window) addEventListener("scrollend", settle);
+  else addEventListener("scroll", () => { clearTimeout(timer); timer = setTimeout(settle, 160); }, { passive: true });
 })();
 </script>
 
