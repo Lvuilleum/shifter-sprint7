@@ -65,9 +65,7 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 /* Cursor halo: a faint blue light that trails the pointer */
 .cursor-glow { position: fixed; left: 0; top: 0; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; pointer-events: none; z-index: 4; mix-blend-mode: screen;
   background: radial-gradient(closest-side, rgba(60, 115, 245, .085), rgba(39, 100, 236, .03) 50%, transparent 100%);
-  opacity: 0; transition: opacity .6s; will-change: transform; }
-.cursor-glow.on { opacity: 1; }
-.cursor-glow.on.low { opacity: .2; }
+  opacity: 0; transition: opacity .4s; will-change: transform, opacity; }
 /* Home title only: a soft blue halo behind the words */
 .h-display.glow { position: relative; isolation: isolate; width: fit-content; max-width: 100%; }
 .h-display.glow::before {
@@ -1213,11 +1211,19 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 (() => {
   const g = document.getElementById("cursorGlow");
   if (!g) return;
-  let x = innerWidth / 2, y = innerHeight / 3, cx = x, cy = y, raf = 0;
+  let x = innerWidth / 2, y = innerHeight / 3, cx = x, cy = y, raf = 0, inside = false;
   const tick = () => { const k = matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : .12; cx += (x - cx) * k; cy += (y - cy) * k; g.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
     raf = Math.abs(x - cx) + Math.abs(y - cy) > .5 ? requestAnimationFrame(tick) : 0; };
-  addEventListener("pointermove", e => { if (e.pointerType === "touch") return; x = e.clientX; y = e.clientY; g.classList.add("on"); const h = document.getElementById("pagehead"); g.classList.toggle("low", !!h && y > h.getBoundingClientRect().bottom); if (!raf) raf = requestAnimationFrame(tick); }, { passive: true });
-  document.documentElement.addEventListener("pointerleave", () => g.classList.remove("on"));
+  // Full strength over the title section, easing down to 35% within 240px below it
+  const level = () => {
+    if (!inside) { g.style.opacity = 0; return; }
+    const h = document.getElementById("pagehead"), bottom = h ? h.getBoundingClientRect().bottom : -Infinity;
+    const t = Math.min(1, Math.max(0, (y - bottom) / 240));
+    g.style.opacity = (1 - .65 * t).toFixed(3);
+  };
+  addEventListener("pointermove", e => { if (e.pointerType === "touch") return; x = e.clientX; y = e.clientY; inside = true; level(); if (!raf) raf = requestAnimationFrame(tick); }, { passive: true });
+  addEventListener("scroll", level, { passive: true });
+  document.documentElement.addEventListener("pointerleave", () => { inside = false; level(); });
 })();
 </script>
 
