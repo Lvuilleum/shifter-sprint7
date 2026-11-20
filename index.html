@@ -61,6 +61,12 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 .h-medium { font-family: var(--f-display); font-weight: 460; font-size: clamp(32px, 3.6vw, 56px); line-height: 1; letter-spacing: -.03em; }
 .h-small { font-family: var(--f-display); font-weight: 460; font-size: 24px; line-height: 1.1; letter-spacing: -.02em; }
 .dim { color: var(--ink-3); }
+/* Cursor halo: a faint blue light that trails the pointer */
+.cursor-glow { position: fixed; left: 0; top: 0; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; pointer-events: none; z-index: 0;
+  background: radial-gradient(closest-side, rgba(39, 100, 236, .075), rgba(39, 100, 236, .025) 55%, transparent 100%);
+  opacity: 0; transition: opacity .6s; will-change: transform; }
+.cursor-glow.on { opacity: 1; }
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) { .cursor-glow { display: none; } }
 /* Home title only: a soft blue halo behind the words */
 .h-display.glow { position: relative; isolation: isolate; }
 .h-display.glow::before {
@@ -276,7 +282,7 @@ main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); 
 .empty { padding: 28px; border-radius: var(--r-lg); border: 1px dashed var(--line-2); color: var(--ink-2); }
 
 /* Dialog */
-dialog { border: 0; padding: 0; border-radius: 24px; background: var(--surface); color: var(--ink); width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 120px rgba(0, 0, 0, .6); }
+dialog { border: 0; padding: 0; border-radius: 24px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 220px 220px, radial-gradient(90% 60% at 10% 0%, rgba(39, 100, 236, .10), transparent 65%), linear-gradient(160deg, #1a1f2a 0%, #141821 55%, #11141b 100%); background-blend-mode: soft-light, normal, normal; color: var(--ink); width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 120px rgba(0, 0, 0, .6); }
 dialog::backdrop { background: rgba(4, 6, 10, .66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .dlg { display: grid; grid-template-rows: auto 1fr; max-height: calc(100vh - 48px); }
 .dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 28px 32px 22px; border-bottom: 1px solid var(--line); }
@@ -352,6 +358,7 @@ ol.steps a { color: var(--ink); border-bottom: 1px solid var(--line-2); }
 <div class="wrap"><div class="pagehead" id="pagehead"></div></div>
 <main class="wrap" id="main"></main>
 
+<div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
 <dialog id="dlg" aria-labelledby="dlgTitle"></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -1196,5 +1203,16 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 })();
 </script>
 
+<script>
+(() => {
+  const g = document.getElementById("cursorGlow");
+  if (!g || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  let x = innerWidth / 2, y = innerHeight / 3, cx = x, cy = y, raf = 0;
+  const tick = () => { cx += (x - cx) * .12; cy += (y - cy) * .12; g.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
+    raf = Math.abs(x - cx) + Math.abs(y - cy) > .5 ? requestAnimationFrame(tick) : 0; };
+  addEventListener("pointermove", e => { x = e.clientX; y = e.clientY; g.classList.add("on"); if (!raf) raf = requestAnimationFrame(tick); }, { passive: true });
+  document.documentElement.addEventListener("pointerleave", () => g.classList.remove("on"));
+})();
+</script>
 </body>
 </html>
