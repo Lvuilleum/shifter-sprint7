@@ -136,8 +136,8 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 .sync-pop .hint { color: var(--ink-3); font-size: 12px; }
 .sync-wrap:hover .sync-pop, .sync-wrap:focus-within .sync-pop { opacity: 1; visibility: visible; transform: none; transition: opacity .25s, transform .4s var(--ease-out), visibility 0s; }
 .sync .dot { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); flex: none; }
-.sync.live .dot { background: var(--green); }
-.sync.live .dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1px solid var(--green); opacity: 0; animation: ping 2.4s var(--ease-out) infinite; }
+.sync.is-live .dot { background: var(--green); }
+.sync.is-live .dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1px solid var(--green); opacity: 0; animation: ping 2.4s var(--ease-out) infinite; }
 .sync.warn .dot { background: var(--amber); }
 .sync .err { color: var(--amber); }
 @keyframes ping { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
@@ -797,7 +797,7 @@ function renderSync() {
   else if (IN_ARTIFACT && live) { text = `Board · ${day(board.syncedAt)}`; ok = true; }
   else text = board.syncedAt ? `Board · ${day(board.syncedAt)}` : "Board pas encore lu";
   if (liveError) text = `<span class="err">${esc(liveError)}</span>`;
-  el.classList.toggle("live", ok && !liveError);
+  el.classList.toggle("is-live", ok && !liveError);
   el.classList.toggle("warn", !!liveError);
   txt.innerHTML = text;
   // The dot is the control: with a token it re-reads the board, otherwise it opens the connect pop-up
@@ -806,7 +806,7 @@ function renderSync() {
   el.disabled = !!loading;
   el.toggleAttribute("data-refresh", canRead);
   el.toggleAttribute("data-connect", !IN_ARTIFACT && !canRead);
-  document.getElementById("syncHint").innerHTML = loading ? "" : canRead ? "Cliquer pour relire · <button class=\"tlink\" data-connect>token</button>" : IN_ARTIFACT ? "" : "Cliquer pour connecter le board";
+  document.getElementById("syncHint").innerHTML = loading ? "" : canRead ? "Cliquer pour relire" : IN_ARTIFACT ? "" : "Cliquer pour connecter le board";
   el.setAttribute("aria-label", txt.textContent + (canRead ? ", relire le board" : ""));
   const sig = IN_ARTIFACT ? "a" : getToken() ? "t" : "n";
   if (ctl.dataset.sig === sig) return;
@@ -814,7 +814,7 @@ function renderSync() {
   ctl.innerHTML = IN_ARTIFACT
     ? abtn("Version en direct", PAGES_URL)
     : getToken()
-      ? ""
+      ? `<button class="tlink" data-connect>token</button>`
       : btn("Connecter le board", "data-connect", "blue");
   rollify(ctl);
 }
