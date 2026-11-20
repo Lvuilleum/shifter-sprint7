@@ -147,6 +147,13 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 /* Heads and sections */
 .pagehead { padding-block: clamp(56px, 9vw, 128px) 0; display: grid; gap: 22px; }
 main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); }
+/* Scroll magnet: when a scroll ends near a section start, it glides onto it */
+html { scroll-snap-type: y proximity; }
+.pagehead { scroll-snap-align: start; scroll-margin-top: 400px; }
+main section { scroll-snap-align: start; scroll-margin-top: 104px; }
+@media (max-width: 1359px) { main section { scroll-margin-top: 150px; } }
+@media (max-width: 820px) { main section { scroll-margin-top: 190px; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-snap-type: none; } }
 .sec-head { display: grid; gap: 14px; margin-bottom: 40px; max-width: 900px; }
 .sec-head .dim { font-size: 17px; }
 
@@ -218,20 +225,20 @@ main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); 
 .edges path.met { stroke: var(--green); opacity: .4; }
 .map.focus .edges path { opacity: .08; }
 .map.focus .edges path.hl { opacity: 1; stroke: var(--blue-hi); stroke-width: 1.8; }
-.chip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; width: 100%; min-height: 44px; padding: 8px 12px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--surface-2); color: var(--ink); text-align: left; cursor: pointer; font-size: 14px; line-height: 1.25; transition: opacity .3s, border-color .3s, background-color .3s; }
+.chip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; width: 100%; min-height: 44px; padding: 8px 12px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--surface-2); color: var(--ink); text-align: left; cursor: pointer; font-size: 14px; line-height: 1.25; transition: opacity .3s, filter .3s, border-color .3s, background-color .3s; }
 .chip .num { font-family: var(--f-mono); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ink-3); }
 .chip .ic { width: 13px; height: 13px; color: var(--ink-3); }
 .chip.ready { border-color: rgba(122, 162, 255, .65); }
 .chip.ready .ic, .chip.ready .num { color: var(--blue-hi); }
-.chip.wait { border-style: dashed; background: transparent; color: var(--ink-2); }
+.chip.wait { border-style: dashed; background: var(--surface); color: var(--ink-2); }
 .chip.wait .ic { color: var(--amber); }
 .chip.dev .ic, .chip.review .ic { color: var(--ink); }
-.chip.done { background: var(--green-bg); border-color: transparent; }
+.chip.done { background: linear-gradient(var(--green-bg), var(--green-bg)), var(--surface); border-color: transparent; }
 .chip.done .ic, .chip.done .num { color: var(--green); }
 .chip:hover { border-color: var(--ink); }
-.map.focus .chip { opacity: .25; }
-.map.focus .chip.hl { opacity: 1; }
-.map.focus .chip.me { opacity: 1; border-color: var(--blue-hi); }
+/* Dim with a filter, not opacity, so the chips stay opaque over the arrows */
+.map.focus .chip:not(.hl):not(.me) { filter: brightness(.38) saturate(.5); }
+.map.focus .chip.me { border-color: var(--blue-hi); }
 
 /* Merge order */
 .rows { border-top: 1px solid var(--line); }
