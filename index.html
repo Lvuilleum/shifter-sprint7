@@ -1228,7 +1228,31 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 /* ---------- smooth scroll (as on cortexexam.com: Lenis, lerp .12, on GSAP's ticker) ---------- */
 (() => {
   if (!window.Lenis || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const lenis = window.lenis = new Lenis({ lerp: 0.12, anchors: false });
+  /* Magnet, in Lenis terms. Snap points are the titles (page top + each section head, 36px under
+     the header). Near a title the wheel meets friction, so even a steady scroll slows as it
+     passes one; when the wheel goes quiet near a title, the page glides onto it. */
+  const ZONE = 170, MIN = .28, GAP = 36;
+  const points = () => {
+    const off = (document.querySelector(".top")?.offsetHeight || 0) + GAP, ys = [0];
+    document.querySelectorAll("main .sec-head").forEach(h => { if (h.offsetParent) ys.push(Math.round(h.getBoundingClientRect().top + scrollY - off)); });
+    return ys;
+  };
+  const nearest = y => points().reduce((b, p) => Math.abs(p - y) < Math.abs(b - y) ? p : b, Infinity);
+  let idle = 0;
+  const settle = () => {
+    const y = lenis.targetScroll, p = nearest(y), reach = Math.min(260, innerHeight * .3);
+    if (Math.abs(p - y) > 2 && Math.abs(p - y) <= reach) lenis.scrollTo(p, { duration: .9, easing: t => 1 - Math.pow(2, -10 * t) });
+  };
+  const lenis = window.lenis = new Lenis({
+    lerp: 0.2, anchors: false,
+    virtualScroll: d => {
+      if (!d.event.type.includes("wheel") || d.event.ctrlKey) return true;
+      const y = lenis.targetScroll, dist = Math.abs(nearest(y + d.deltaY * .5) - (y + d.deltaY * .5));
+      if (dist < ZONE) { const k = dist / ZONE; d.deltaY *= MIN + (1 - MIN) * k * k * (3 - 2 * k); }
+      clearTimeout(idle); idle = setTimeout(settle, 140);
+      return true;
+    }
+  });
   if (window.gsap) { gsap.ticker.add(t => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0); }
   else { const raf = t => { lenis.raf(t); requestAnimationFrame(raf); }; requestAnimationFrame(raf); }
   // Changing view jumps back to the top without a glide
