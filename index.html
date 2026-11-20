@@ -91,6 +91,10 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 .nav a { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 11px; border-radius: 999px; font-size: 14px; color: var(--ink-2); white-space: nowrap; transition: background-color .3s, color .3s; }
 .nav a:hover { color: var(--ink); }
 .nav a[aria-current="page"] { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+.nav a.all-done, .nav a.all-done .cnt { color: var(--green); }
+.nav a.all-done { background: var(--green-bg); }
+.nav a.all-done[aria-current="page"] { box-shadow: inset 0 0 0 1px var(--green); }
+.nav a.all-done svg { width: 13px; height: 13px; }
 .nav .cnt { font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-3); }
 .live { display: flex; align-items: center; gap: 14px; justify-content: flex-end; }
 .sync { display: inline-flex; align-items: center; gap: 8px; font-family: var(--f-mono); font-size: 13px; color: var(--ink-3); white-space: nowrap; }
@@ -730,7 +734,8 @@ function renderNav() {
     `<a href="#vue" ${r === "vue" ? 'aria-current="page"' : ""}>Vue d'ensemble</a>` +
     PEOPLE.map(p => {
       const mine = TASKS.filter(t => t.who === p.id), done = mine.filter(t => isDone(t.n)).length;
-      return `<a href="#${p.id}" ${r === p.id ? 'aria-current="page"' : ""}>${p.name}<span class="cnt">${done}/${mine.length}</span></a>`;
+      const all = done === mine.length;
+      return `<a href="#${p.id}" ${r === p.id ? 'aria-current="page"' : ""}${all ? ' class="all-done" title="Toutes ses PR sont mergées"' : ""}>${all ? ICON.done : ""}${p.name}<span class="cnt">${done}/${mine.length}</span></a>`;
     }).join("");
 }
 function renderSync() {
