@@ -16,7 +16,7 @@
    merge order, final screens; person page = queue, waiting, merged, with who to review on the side. */
 :root {
   color-scheme: dark;
-  --bg: #050608; --surface: #0d0f13; --surface-2: #14171c;
+  --bg: #04060a; --surface: #0d0f13; --surface-2: #14171c;
   --ink: #eceef2; --ink-2: rgba(236, 238, 242, .72); --ink-3: rgba(236, 238, 242, .5);
   --line: rgba(236, 238, 242, .08); --line-2: rgba(236, 238, 242, .16);
   --card: rgba(236, 238, 242, .035); --card-hi: rgba(236, 238, 242, .07);
@@ -33,6 +33,18 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); }
+html { overflow-x: clip; }
+/* Page background: near-black with a faint blue cast, two soft blue pools and a fine grain */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 220px 220px,
+    radial-gradient(110% 70% at 12% -15%, rgba(39, 100, 236, .085), transparent 62%),
+    radial-gradient(80% 60% at 105% 115%, rgba(39, 100, 236, .05), transparent 60%),
+    linear-gradient(180deg, #060810 0%, #04060a 45%, #030407 100%);
+  background-blend-mode: soft-light, normal, normal, normal;
+  opacity: 1;
+}
 body { color: var(--ink); font-family: var(--f-text); font-size: 15px; line-height: 1.55; letter-spacing: -.005em; -webkit-font-smoothing: antialiased; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 h1, h2, h3, p { margin: 0; }
@@ -49,6 +61,16 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 .h-medium { font-family: var(--f-display); font-weight: 460; font-size: clamp(32px, 3.6vw, 56px); line-height: 1; letter-spacing: -.03em; }
 .h-small { font-family: var(--f-display); font-weight: 460; font-size: 24px; line-height: 1.1; letter-spacing: -.02em; }
 .dim { color: var(--ink-3); }
+/* Home title only: a soft blue halo behind the words */
+.h-display.glow { position: relative; isolation: isolate; }
+.h-display.glow::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  inset: -35% -8% -45% -12%;
+  background: radial-gradient(closest-side at 38% 52%, rgba(39, 100, 236, .34), rgba(39, 100, 236, .12) 55%, transparent 100%);
+  filter: blur(48px);
+  animation: glow-in 2.4s var(--ease-out) .2s both;
+}
+@keyframes glow-in { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
 .w { display: inline-block; overflow: clip; vertical-align: top; padding-bottom: .08em; margin-bottom: -.08em; }
 .wi { display: inline-block; }
 
@@ -79,7 +101,7 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 .ulink:hover { color: var(--ink); border-color: var(--ink); }
 
 /* Header */
-.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: rgba(5, 6, 8, .72); -webkit-backdrop-filter: blur(14px) saturate(1.15); backdrop-filter: blur(14px) saturate(1.15); border-bottom: 1px solid var(--line); }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: rgba(4, 6, 10, .62); -webkit-backdrop-filter: blur(14px) saturate(1.15); backdrop-filter: blur(14px) saturate(1.15); border-bottom: 1px solid var(--line); }
 .top-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px 20px; min-height: 68px; padding-block: 8px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--f-display); font-weight: 500; font-size: 20px; letter-spacing: -.02em; }
 .brand .eyebrow { font-size: 12px; white-space: nowrap; }
@@ -255,7 +277,7 @@ main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); 
 
 /* Dialog */
 dialog { border: 0; padding: 0; border-radius: 24px; background: var(--surface); color: var(--ink); width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 120px rgba(0, 0, 0, .6); }
-dialog::backdrop { background: rgba(5, 6, 8, .66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+dialog::backdrop { background: rgba(4, 6, 10, .66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .dlg { display: grid; grid-template-rows: auto 1fr; max-height: calc(100vh - 48px); }
 .dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 28px 32px 22px; border-bottom: 1px solid var(--line); }
 .dlg-head .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 14px; }
@@ -767,7 +789,7 @@ function renderSync() {
 /* ---------- views ---------- */
 function headHTML(r) {
   if (r === "vue") return `<p class="eyebrow fade">Shifter · sprint 7 · 29 PR · 75 h</p>
-    <h1 class="h-display" data-split>Qui merge quoi,<br><span class="dim">et quand.</span></h1>`;
+    <h1 class="h-display glow" data-split>Qui merge quoi,<br><span class="dim">et quand.</span></h1>`;
   const p = PBY[r];
   return `<p class="eyebrow fade">@${p.gh} · ${esc(p.role)}</p><h1 class="h-display" data-split>${p.name}</h1>`;
 }
