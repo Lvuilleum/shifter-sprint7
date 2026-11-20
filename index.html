@@ -182,6 +182,12 @@ main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); 
 .card { position: relative; background: var(--card); border-radius: var(--r-lg); box-shadow: inset 0 0 0 1px var(--line); padding: 24px; min-width: 0; transition: background-color .4s, transform .6s var(--ease-out), box-shadow .4s; }
 .is-link { cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .is-link:hover { background: var(--card-hi); transform: translateY(-3px); box-shadow: inset 0 0 0 1px var(--line-2); } }
+/* In review: pulses green for as long as the PR is in review */
+@keyframes reviewPulse { 0%, 100% { box-shadow: inset 0 0 0 1px rgba(82, 211, 148, .5), 0 0 0 0 rgba(82, 211, 148, 0); } 50% { box-shadow: inset 0 0 0 1px var(--green), 0 0 0 5px rgba(82, 211, 148, .2), 0 0 22px rgba(82, 211, 148, .35); } }
+.chip.review, .mini.review { border-color: var(--green); color: var(--green); animation: reviewPulse 1.6s ease-in-out infinite; }
+.chip.review .ic, .chip.review .num { color: var(--green); }
+.d1.review, .task.review { animation: reviewPulse 1.6s ease-in-out infinite; }
+.pill.review { background: var(--green-bg); color: var(--green); }
 .flash { animation: flash 1.4s var(--ease-out) 3; }
 @keyframes flash { 0% { box-shadow: inset 0 0 0 1px var(--green), 0 0 0 0 rgba(82, 211, 148, .5); } 100% { box-shadow: inset 0 0 0 1px var(--green), 0 0 0 16px rgba(82, 211, 148, 0); } }
 
@@ -818,7 +824,7 @@ function renderOverview() {
 
   const day1 = TASKS.filter(t => t.day1).map(t => {
     const unl = allDependents(t.n).size;
-    return `<button class="card is-link d1" data-open="${t.n}" data-n="${t.n}">
+    return `<button class="card is-link d1 ${view(t.n)}" data-open="${t.n}" data-n="${t.n}">
       <span class="d1-top"><span class="eyebrow">#${t.n} · ${t.code}</span><span class="h-small">${t.short}</span><span class="who">${who(t.n)} · ${dur(t.est)}</span></span>
       <span class="d1-foot">${pill(view(t.n))}<span class="unl">${unl ? `→ ${unl} PR` : "hors code"}</span></span>
     </button>`;
@@ -1201,9 +1207,8 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
     manual = m; render();
   }, () => {});
 })();
-</script>
 
-<script>
+/* ---------- cursor halo (Mattia) ---------- */
 (() => {
   const g = document.getElementById("cursorGlow");
   if (!g || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
@@ -1214,5 +1219,6 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
   document.documentElement.addEventListener("pointerleave", () => g.classList.remove("on"));
 })();
 </script>
+
 </body>
 </html>
