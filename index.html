@@ -126,8 +126,7 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 .nav .cnt { font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-3); }
 .live { display: flex; align-items: center; gap: 14px; justify-content: flex-end; }
 .sync-wrap { position: relative; display: inline-flex; }
-.sync { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(236, 238, 242, .05); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; transition: background-color .3s, box-shadow .3s; }
-.sync:hover, .sync:focus-visible { background: rgba(236, 238, 242, .1); box-shadow: inset 0 0 0 1px var(--line-2); }
+.sync { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
 .sync:disabled { cursor: progress; }
 .sync.loading .dot { animation: breathe 1s ease-in-out infinite; }
 @keyframes breathe { 50% { opacity: .3; } }
@@ -814,7 +813,7 @@ function renderSync() {
   ctl.innerHTML = IN_ARTIFACT
     ? abtn("Version en direct", PAGES_URL)
     : getToken()
-      ? `<button class="tlink" data-connect>token</button>`
+      ? btn("Token", "data-connect", "dark", false)
       : btn("Connecter le board", "data-connect", "blue");
   rollify(ctl);
 }
