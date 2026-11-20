@@ -62,7 +62,7 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 .h-small { font-family: var(--f-display); font-weight: 460; font-size: 24px; line-height: 1.1; letter-spacing: -.02em; }
 .dim { color: var(--ink-3); }
 /* Cursor halo: a faint blue light that trails the pointer */
-.cursor-glow { position: fixed; left: 0; top: 0; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; pointer-events: none; z-index: 0;
+.cursor-glow { position: fixed; left: 0; top: 0; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; pointer-events: none; z-index: -1;
   background: radial-gradient(closest-side, rgba(39, 100, 236, .075), rgba(39, 100, 236, .025) 55%, transparent 100%);
   opacity: 0; transition: opacity .6s; will-change: transform; }
 .cursor-glow.on { opacity: 1; }
