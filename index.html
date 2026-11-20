@@ -146,6 +146,11 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 
 /* Heads and sections */
 .pagehead { padding-block: clamp(56px, 9vw, 128px) 0; display: grid; gap: 22px; }
+/* Lenis */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
 main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); }
 .sec-head { display: grid; gap: 14px; margin-bottom: 40px; max-width: 900px; }
 .sec-head .dim { font-size: 17px; }
@@ -365,10 +370,11 @@ ol.steps a { color: var(--ink); border-bottom: 1px solid var(--line-2); }
 <main class="wrap" id="main"></main>
 
 <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
-<dialog id="dlg" aria-labelledby="dlgTitle"></dialog>
+<dialog data-lenis-prevent id="dlg" aria-labelledby="dlgTitle"></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
 <script>
 "use strict";
 const REPO = "https://github.com/Shifter-Swent/shifter";
@@ -1219,76 +1225,17 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
   document.documentElement.addEventListener("pointerleave", () => g.classList.remove("on"));
 })();
 
-/* ---------- scroll magnet ----------
-   Snap points are the titles only (page title + each section head). When a scroll comes to rest,
-   the page glides onto the nearest title, if it is close enough. Choosing the nearest title to
-   where the scroll stopped (not "the next one in that direction") means a short section is
-   never jumped over by a normal scroll; only a big scroll that ends past it goes further. */
+/* ---------- smooth scroll (as on cortexexam.com: Lenis, lerp .12, on GSAP's ticker) ---------- */
 (() => {
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
-  const GAP = 36;                                    // breathing room under the sticky header
-  let target = null, timer = 0;
-  const headerH = () => (document.querySelector(".top")?.offsetHeight || 0);
-  const points = () => {
-    const off = headerH() + GAP, max = document.documentElement.scrollHeight - innerHeight;
-    const ys = [0];
-    document.querySelectorAll("main .sec-head").forEach(h => {
-      if (!h.offsetParent) return;
-      const y = Math.round(h.getBoundingClientRect().top + scrollY - off);
-      if (y > 0 && y <= max) ys.push(y);
-    });
-    return ys;
-  };
-  const settle = () => {
-    if (reduce.matches || document.querySelector("dialog[open]")) return;
-    const y = scrollY;
-    if (target != null) { if (Math.abs(y - target) <= 2) target = null; return; }   // our own glide ended
-    const reach = Math.min(320, innerHeight * .32);
-    let best = null;
-    for (const p of points()) if (Math.abs(p - y) <= reach && (best == null || Math.abs(p - y) < Math.abs(best - y))) best = p;
-    if (best == null || Math.abs(best - y) <= 2) return;
-    target = best;
-    scrollTo({ top: best, behavior: "smooth" });
-  };
-  // Any new input from the person cancels a glide in progress
-  const cancel = () => { target = null; };
-  ["wheel", "touchstart", "keydown", "pointerdown"].forEach(t => addEventListener(t, cancel, { passive: true }));
-  if ("onscrollend" in window) addEventListener("scrollend", settle);
-  else addEventListener("scroll", () => { clearTimeout(timer); timer = setTimeout(settle, 160); }, { passive: true });
-
-  /* Detent while scrolling: with the wheel or trackpad, even at a steady speed, the page catches
-     on each title it crosses and holds there for a beat, then lets go. A big, fast scroll
-     (lots of wheel travel during the hold) breaks straight through. */
-  const HOLD = 420, BREAK = 1100;
-  let lastY = scrollY, lastWheel = 0, hold = null, passed = null;
-  const inner = e => e.target instanceof Element && e.target.closest("dialog, .map-frame, .gal, .thumbs, .shots");
-  addEventListener("wheel", e => {
-    if (e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || inner(e)) return;
-    lastWheel = performance.now();
-    if (!hold) return;
-    const d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
-    if (Math.sign(d) !== hold.dir) { hold = null; return; }                  // reversing always frees
-    hold.acc += Math.abs(d);
-    if (hold.acc > BREAK || performance.now() > hold.until) { passed = hold.p; hold = null; return; }
-    e.preventDefault();
-  }, { passive: false });
-  addEventListener("scroll", () => {
-    const y = scrollY, prev = lastY; lastY = y;
-    if (hold) { if (Math.abs(y - hold.p) > 1) scrollTo({ top: hold.p, behavior: "instant" }); lastY = hold.p; return; }
-    if (passed != null && Math.abs(y - passed) > 48) passed = null;
-    if (reduce.matches || performance.now() - lastWheel > 220 || y === prev) return;
-    const dir = Math.sign(y - prev);
-    for (const p of points()) {
-      if (p === passed || p === 0) continue;
-      if ((dir > 0 && prev < p && y >= p) || (dir < 0 && prev > p && y <= p)) {
-        hold = { p, dir, acc: 0, until: performance.now() + HOLD };
-        target = null;
-        scrollTo({ top: p, behavior: "instant" }); lastY = p;
-        setTimeout(() => { if (hold && hold.p === p) { passed = p; hold = null; } }, HOLD);
-        break;
-      }
-    }
-  }, { passive: true });
+  if (!window.Lenis || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const lenis = window.lenis = new Lenis({ lerp: 0.12, anchors: false });
+  if (window.gsap) { gsap.ticker.add(t => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0); }
+  else { const raf = t => { lenis.raf(t); requestAnimationFrame(raf); }; requestAnimationFrame(raf); }
+  // Changing view jumps back to the top without a glide
+  addEventListener("hashchange", () => lenis.scrollTo(0, { immediate: true, force: true }));
+  // Freeze the page behind an open pop-up; the pop-up scrolls natively
+  const dlg = document.getElementById("dlg");
+  if (dlg) new MutationObserver(() => dlg.open ? lenis.stop() : lenis.start()).observe(dlg, { attributes: true, attributeFilter: ["open"] });
 })();
 </script>
 
