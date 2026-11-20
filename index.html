@@ -1255,6 +1255,40 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
   ["wheel", "touchstart", "keydown", "pointerdown"].forEach(t => addEventListener(t, cancel, { passive: true }));
   if ("onscrollend" in window) addEventListener("scrollend", settle);
   else addEventListener("scroll", () => { clearTimeout(timer); timer = setTimeout(settle, 160); }, { passive: true });
+
+  /* Detent while scrolling: with the wheel or trackpad, even at a steady speed, the page catches
+     on each title it crosses and holds there for a beat, then lets go. A big, fast scroll
+     (lots of wheel travel during the hold) breaks straight through. */
+  const HOLD = 420, BREAK = 1100;
+  let lastY = scrollY, lastWheel = 0, hold = null, passed = null;
+  const inner = e => e.target instanceof Element && e.target.closest("dialog, .map-frame, .gal, .thumbs, .shots");
+  addEventListener("wheel", e => {
+    if (e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || inner(e)) return;
+    lastWheel = performance.now();
+    if (!hold) return;
+    const d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
+    if (Math.sign(d) !== hold.dir) { hold = null; return; }                  // reversing always frees
+    hold.acc += Math.abs(d);
+    if (hold.acc > BREAK || performance.now() > hold.until) { passed = hold.p; hold = null; return; }
+    e.preventDefault();
+  }, { passive: false });
+  addEventListener("scroll", () => {
+    const y = scrollY, prev = lastY; lastY = y;
+    if (hold) { if (Math.abs(y - hold.p) > 1) scrollTo({ top: hold.p, behavior: "instant" }); lastY = hold.p; return; }
+    if (passed != null && Math.abs(y - passed) > 48) passed = null;
+    if (reduce.matches || performance.now() - lastWheel > 220 || y === prev) return;
+    const dir = Math.sign(y - prev);
+    for (const p of points()) {
+      if (p === passed || p === 0) continue;
+      if ((dir > 0 && prev < p && y >= p) || (dir < 0 && prev > p && y <= p)) {
+        hold = { p, dir, acc: 0, until: performance.now() + HOLD };
+        target = null;
+        scrollTo({ top: p, behavior: "instant" }); lastY = p;
+        setTimeout(() => { if (hold && hold.p === p) { passed = p; hold = null; } }, HOLD);
+        break;
+      }
+    }
+  }, { passive: true });
 })();
 </script>
 
