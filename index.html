@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Shifter Sprint 7</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sticky header with the person switcher; overview = progress strip, day-one contracts,
+   swimlane dependency map (people x merges before), merge-order notes, final-app gallery;
+   person page = ordered priority queue, waiting PRs, merged. */
+:root {
+  --bg: #F3F5F9;
+  --surface: #FFFFFF;
+  --surface-2: #E9EDF4;
+  --line: #D6DCE6;
+  --fg: #0E1726;
+  --muted: #5A6578;
+  --accent: #2361E0;
+  --accent-soft: #DCE7FC;
+  --on-accent: #FFFFFF;
+  --wait: #A86A10;
+  --wait-soft: #F8EBD3;
+  --dev: #7340D8;
+  --dev-soft: #ECE4FB;
+  --review: #0B7C94;
+  --review-soft: #D8F0F5;
+  --done: #1A7F43;
+  --done-soft: #DAF1E3;
+  --edge: #B9C3D3;
+  --shadow: 0 1px 2px rgba(14, 23, 38, .06), 0 6px 24px rgba(14, 23, 38, .06);
+  --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A1019; --surface: #121A27; --surface-2: #192335; --line: #24314A;
+    --fg: #E5EBF5; --muted: #93A0B6; --accent: #5B95FF; --accent-soft: #1A2B4D; --on-accent: #06101F;
+    --wait: #E3A94A; --wait-soft: #33270F; --dev: #AE8CFF; --dev-soft: #2A2045;
+    --review: #3CC4DD; --review-soft: #0F2E36; --done: #45CF7E; --done-soft: #10301F;
+    --edge: #33425C; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A1019; --surface: #121A27; --surface-2: #192335; --line: #24314A;
+  --fg: #E5EBF5; --muted: #93A0B6; --accent: #5B95FF; --accent-soft: #1A2B4D; --on-accent: #06101F;
+  --wait: #E3A94A; --wait-soft: #33270F; --dev: #AE8CFF; --dev-soft: #2A2045;
+  --review: #3CC4DD; --review-soft: #0F2E36; --done: #45CF7E; --done-soft: #10301F;
+  --edge: #33425C; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px 8px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand h1 { font-size: 20px; font-weight: 700; }
+.brand .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.sync { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.sync .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.sync.live .dot { background: var(--done); box-shadow: 0 0 0 3px var(--done-soft); }
+.sync.warn .dot { background: var(--wait); box-shadow: 0 0 0 3px var(--wait-soft); }
+.sync .err { color: var(--wait); font-weight: 600; }
+.syncbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+form.tok { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+form.tok label { width: 100%; font-size: 13px; font-weight: 600; color: var(--muted); }
+form.tok input { flex: 1 1 240px; min-width: 0; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-family: var(--mono); font-size: 14px; }
+ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 70ch; }
+.nav { display: flex; gap: 6px; overflow-x: auto; padding-block: 2px 10px; scrollbar-width: thin; }
+.nav a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg); white-space: nowrap; font-weight: 500; font-size: 14px; background: var(--surface); }
+.nav a:hover { text-decoration: none; border-color: var(--accent); }
+.nav a[aria-current="page"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.nav a.overview { padding-left: 12px; }
+.av { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--surface-2); color: var(--fg); font-family: var(--display); flex: none; }
+.nav a[aria-current="page"] .av { background: var(--bg); color: var(--fg); }
+.nav .cnt { font-family: var(--mono); font-size: 11px; opacity: .7; }
+
+main { padding-block: 24px 64px; display: grid; gap: 36px; }
+section > h2 { font-size: 22px; margin-bottom: 4px; }
+.lede { color: var(--muted); margin: 0 0 14px; max-width: 68ch; }
+
+/* Status pills */
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill svg { width: 12px; height: 12px; flex: none; }
+.pill.done { background: var(--done-soft); color: var(--done); }
+.pill.review { background: var(--review-soft); color: var(--review); }
+.pill.dev { background: var(--dev-soft); color: var(--dev); }
+.pill.ready { background: var(--accent-soft); color: var(--accent); }
+.pill.wait { background: var(--wait-soft); color: var(--wait); }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.tag.day1 { background: var(--fg); color: var(--bg); }
+
+/* Progress strip */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.stat { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; }
+.stat .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.stat .v { font-family: var(--display); font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: 15px; color: var(--muted); font-weight: 500; }
+.bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--surface-2); margin-top: 12px; }
+.bar span { display: block; height: 100%; }
+.bar .done { background: var(--done); } .bar .review { background: var(--review); } .bar .dev { background: var(--dev); } .bar .ready { background: var(--accent); } .bar .wait { background: var(--wait); opacity: .55; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* Day one */
+.dayone { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.d1 { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 8px; align-content: start; cursor: pointer; text-align: left; }
+.d1:hover { border-color: var(--accent); }
+.d1 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.d1 h3 { font-size: 16px; }
+.d1 p { margin: 0; font-size: 13px; color: var(--muted); }
+.d1 .unl { font-size: 13px; font-weight: 600; color: var(--fg); }
+
+/* Dependency map */
+.map-tools { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.map-tools svg { vertical-align: middle; }
+.map-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.map { position: relative; min-width: 940px; display: grid; grid-template-columns: 116px repeat(4, minmax(0, 1fr)); }
+.map .colh { padding: 12px 12px 10px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); position: relative; z-index: 2; }
+.map .colh b { display: block; font-family: var(--display); font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--fg); }
+.map .lane-name { padding: 12px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; position: relative; z-index: 2; background: var(--surface); }
+.map .lane-name a { color: var(--fg); }
+.map .cell { padding: 10px 14px 10px 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; position: relative; z-index: 2; }
+.map .lane-first { border-top: 0; }
+.edges { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: visible; }
+.edges path { fill: none; stroke: var(--edge); stroke-width: 1.4; transition: stroke .15s, opacity .15s; }
+.edges path.order { stroke-dasharray: 5 4; }
+.edges path.met { stroke: var(--done); opacity: .45; }
+.map.focus .edges path { opacity: .12; }
+.map.focus .edges path.hl { opacity: 1; stroke: var(--accent); stroke-width: 2; }
+.chip { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2px 8px; width: 100%; text-align: left; padding: 7px 9px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; font-size: 13px; line-height: 1.25; transition: opacity .15s, border-color .15s, background .15s; }
+.chip .num { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--muted); }
+.chip .lbl { font-weight: 500; min-width: 0; }
+.chip .ic { width: 14px; height: 14px; }
+.chip.ready { border-color: var(--accent); }
+.chip.ready .ic { color: var(--accent); }
+.chip.wait { border-style: dashed; color: var(--muted); }
+.chip.wait .ic { color: var(--wait); }
+.chip.dev { border-color: var(--dev); } .chip.dev .ic { color: var(--dev); }
+.chip.review { border-color: var(--review); } .chip.review .ic { color: var(--review); }
+.chip.done { background: var(--done-soft); border-color: transparent; } .chip.done .ic, .chip.done .num { color: var(--done); }
+.chip:hover { border-color: var(--fg); }
+.map.focus .chip { opacity: .3; }
+.map.focus .chip.hl { opacity: 1; }
+.map.focus .chip.me { opacity: 1; box-shadow: 0 0 0 3px var(--accent-soft); border-color: var(--accent); }
+
+/* Notes */
+.notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note h3 { font-size: 15px; font-family: var(--mono); font-weight: 600; letter-spacing: 0; overflow-wrap: anywhere; }
+.note p { margin: 0; color: var(--muted); font-size: 14px; }
+.order-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.order-line .arrow { color: var(--muted); }
+.mini { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); font-family: var(--mono); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.mini .who { font-family: var(--body); font-weight: 500; color: var(--muted); }
+.mini.done { background: var(--done-soft); border-color: transparent; color: var(--done); }
+.mini.review { border-color: var(--review); color: var(--review); }
+.mini.dev { border-color: var(--dev); color: var(--dev); }
+.mini.ready { border-color: var(--accent); color: var(--accent); }
+.mini.wait { border-style: dashed; color: var(--muted); }
+.mini:hover { border-color: var(--fg); }
+
+/* Gallery */
+.gal-group { display: grid; gap: 10px; margin-top: 18px; }
+.gal-group h3 { font-size: 16px; }
+.gal { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; scroll-snap-type: x proximity; }
+.gal figure { margin: 0; flex: 0 0 auto; width: 210px; scroll-snap-align: start; display: grid; gap: 8px; align-content: start; }
+.gal .shot { display: block; padding: 0; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #0A1019; cursor: zoom-in; width: 100%; }
+.gal .shot img { display: block; width: 100%; height: 420px; object-fit: cover; object-position: top; }
+.gal figcaption { font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+.gal figcaption .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Person page */
+.person-head { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; }
+.person-head .big-av { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--fg); color: var(--bg); font-family: var(--display); font-weight: 700; font-size: 22px; }
+.person-head h2 { font-size: 30px; }
+.person-head .role { color: var(--muted); margin: 2px 0 0; }
+.person-head .meter { text-align: right; min-width: 170px; }
+.person-head .meter .v { font-family: var(--display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.person-head .meter .k { font-size: 13px; color: var(--muted); }
+.person-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; }
+.col { display: grid; gap: 28px; min-width: 0; }
+.side { display: grid; gap: 14px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 120px); }
+.sec-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.sec-h h2 { font-size: 20px; }
+.sec-h .count { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.list { display: grid; gap: 14px; }
+.task { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; box-shadow: var(--shadow); min-width: 0; }
+.task.wait { box-shadow: none; background: transparent; border-style: dashed; }
+.task.done { box-shadow: none; }
+.task-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.task-top .ord { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent); color: var(--on-accent); font-family: var(--display); font-weight: 700; font-size: 14px; }
+.task-top .ids { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--muted); }
+.task-top .sp { flex: 1; }
+.task h3 { font-size: 19px; }
+.task .en { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
+.task .sum { margin: 0; max-width: 68ch; }
+.thumbs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.thumbs button { flex: 0 0 auto; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #0A1019; cursor: zoom-in; }
+.thumbs img { display: block; height: 190px; width: auto; max-width: none; }
+.rel { display: grid; gap: 6px; font-size: 14px; }
+.rel-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rel-row .k { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-right: 2px; }
+.hint { margin: 0; font-size: 14px; padding: 8px 12px; border-radius: 9px; background: var(--surface-2); }
+.hint.wait { background: var(--wait-soft); color: var(--fg); }
+.task-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 14px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn:hover { border-color: var(--fg); }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.empty { padding: 18px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.box h3 { font-size: 15px; }
+.box p { margin: 0; font-size: 14px; color: var(--muted); }
+.box ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.box li { display: grid; gap: 3px; font-size: 14px; }
+.box li .l1 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.merged-list { display: grid; gap: 8px; }
+.merged-list .mrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; border-radius: 10px; background: var(--done-soft); }
+.merged-list .mrow b { font-weight: 600; }
+
+/* Dialog */
+dialog { border: 0; padding: 0; border-radius: 18px; background: var(--surface); color: var(--fg); width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+dialog::backdrop { background: rgba(6, 10, 18, .55); }
+.dlg { display: grid; grid-template-rows: auto 1fr; max-height: calc(100vh - 48px); }
+.dlg-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 18px 20px 12px; border-bottom: 1px solid var(--line); }
+.dlg-head h2 { font-size: 22px; }
+.dlg-head .en { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.x { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 18px; line-height: 1; }
+.dlg-body { overflow: auto; padding: 16px 20px 22px; display: grid; gap: 18px; }
+.dlg-body h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.dlg-body ul.todo { margin: 0; padding-left: 20px; display: grid; gap: 4px; max-width: 72ch; }
+.shots { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.shots figure { margin: 0; flex: 0 0 auto; display: grid; gap: 6px; width: min(300px, 74vw); }
+.shots img { width: 100%; border-radius: 14px; border: 1px solid var(--line); background: #0A1019; }
+.shots figcaption { font-size: 13px; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; flex-wrap: wrap; }
+.seg button { border: 0; background: var(--surface); padding: 7px 12px; cursor: pointer; font-size: 13px; font-weight: 600; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.seg button:disabled { opacity: .4; cursor: not-allowed; }
+.status-ctl { display: grid; gap: 8px; }
+.status-ctl p { margin: 0; font-size: 13px; color: var(--muted); }
+.img-only { padding: 12px; display: grid; gap: 10px; justify-items: center; }
+.img-only img { max-height: calc(100vh - 140px); width: auto; border-radius: 16px; }
+.img-only p { margin: 0; color: var(--muted); font-size: 14px; text-align: center; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: calc(100vw - 32px); }
+
+@media (max-width: 900px) {
+  .person-grid { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; }
+  .dayone { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .notes { grid-template-columns: minmax(0, 1fr); }
+  .dayone { grid-template-columns: minmax(0, 1fr); }
+  .person-head { grid-template-columns: auto 1fr; }
+  .person-head .meter { grid-column: 1 / -1; text-align: left; }
+  .person-head h2 { font-size: 24px; }
+  .thumbs img { height: 150px; }
+  .gal figure { width: 170px; }
+  .gal .shot img { height: 340px; }
+  dialog { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 18px 18px 0 0; max-height: 92vh; }
+  .dlg { max-height: 92vh; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div class="brand"><span class="eyebrow">Shifter</span><h1>Sprint 7</h1></div>
+      <div class="syncbar"><span class="sync" id="sync"><span class="dot"></span><span id="syncText">Lecture du Scrum Board…</span></span><span id="syncCtl"></span></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Vues"></nav>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<dialog id="dlg" aria-labelledby="dlgTitle"></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+const REPO = "https://github.com/Shifter-Swent/shifter";
+const FIGMA = "https://www.figma.com/design/mO0rO29TWFRdEhGfm0NPDT/Shifter-Design?node-id=";
+const BOARD_URL = "https://github.com/orgs/Shifter-Swent/projects/2";
+const CONTRACTS = [592, 604, 613];
+const PROJECT_ID = "PVT_kwDOFAHJ_s4BlKtC";
+const PAGES_URL = "https://lvuilleum.github.io/shifter-sprint7/";
+const TOKEN_KEY = "shifter-sprint7-gh-token";
+const TOKEN_URL = "https://github.com/settings/tokens/new?scopes=read:project&description=Shifter%20Sprint%207";
+const IN_ARTIFACT = !!(window.claude && window.claude.use);
+
+const PEOPLE = [
+  { id: "thibaud", name: "Thibaud", gh: "thibaudPn", role: "Shifts : données et règles", note: "Chemin critique : tes PR débloquent Sefa, Mattia et Yuael." },
+  { id: "sefa", name: "Sefa", gh: "sefaav", role: "Grille des shifts et notifs manager", note: "La grille #598 passe en premier : #597, #600 et #601 l'utilisent." },
+  { id: "mattia", name: "Mattia", gh: "nestama4real", role: "Shifts côté bénévole et #29", note: "Tes 3 écrans de shifts s'enchaînent : #600, puis #601 et #602." },
+  { id: "yuael", name: "Yuael", gh: "yuaelTek", role: "Planning automatique", note: "Le contrat #604 (30 min) se merge le jour 1 : Mehdi code l'écran contre lui." },
+  { id: "mehdi", name: "Mehdi", gh: "Dimspronos", role: "Play Store, écran du planning et taps", note: "Lance la Play Console le jour 1 : la vérification d'identité prend plusieurs jours." },
+  { id: "luigi", name: "Luigi", gh: "luigiIeracitano", role: "PO · Plateforme de notifications", note: "Le contrat des notifs #613 bloque 13 PR : il passe avant tout le reste." },
+  { id: "liam", name: "Liam", gh: "Lvuilleum", role: "SM · Boîte aux lettres, notifs bénévole, réglages", note: "Personne n'attend tes PR sauf #616, que le branchement final attend : fais-la d'abord." },
+];
+
+const IMG = {
+  "2146-7246": "La case de la grille : fermée (+), ouverte (×), choisie (cadenas et nombre de bénévoles)",
+  "2146-7289": "Orga, mode Edit : les 12 tranches de 00 à 22, + pour ouvrir, × pour fermer",
+  "2146-7626": "Orga, mode View : les tranches ouvertes en blocs, avec le nombre de bénévoles",
+  "2146-7890": "Une tranche choisie reste : « Sat 10:00 stays · 3 volunteers chose it. »",
+  "2001-6259": "Overview orga : le bouton Shifts à côté de Manage teams",
+  "2001-6351": "Aucun shift encore : « No shifts yet » et le bouton Open slots",
+  "1957-5864": "Join Event : l'équipe, puis la grille en mode Pick et le résumé",
+  "1957-5971": "Aucune tranche choisie : Apply reste désactivé",
+  "1959-5860": "My Events : la carte Pending avec « Change my shifts »",
+  "1959-5968": "Le bottom sheet « Your shifts at Summer Festival »",
+  "1959-6118": "People › Requests : les shifts choisis en chips sous chaque nom",
+  "1966-6170": "Les notifs du bénévole, et l'écran qu'ouvre chaque tap",
+  "1967-6100": "My Events : la candidature refusée, badge Rejected",
+  "1967-6052": "Les notifs de l'orga : candidatures et missions à compléter",
+  "1966-6240": "Les notifs du manager : équipe qui change et check-in manqué",
+  "1998-6020": "Generate schedule : la proposition du samedi",
+  "1998-6139": "Generate schedule : le dimanche",
+  "1998-6222": "Une mission à compléter à la main, avec Assign",
+  "1963-6141": "Rien à proposer",
+  "1966-6056": "La demande de permission des notifications",
+  "1969-6276": "Réglages Android : un canal par type de notif",
+  "1993-6090": "Overview orga avant le planning : personne sur les missions",
+  "1998-6330": "Overview orga après Accept : qui est sur chaque mission",
+  "1969-6056": "Settings › Notifications : tout activé",
+  "1969-6166": "Settings › Notifications : Announcements coupé",
+};
+
+// deps = il faut ce code mergé ; after = ordre de merge (même fichier) ; wires = branchement final, ne bloque pas
+const TASKS = [
+  { n: 592, code: "T1", who: "thibaud", est: 90, prio: "P0", day1: true, story: 585, short: "Contrat des shifts",
+    title: "Define the shift contract",
+    sum: "Un shift devient une tranche de 2 h qui commence à une heure paire, sans nom ni places. Seulement le modèle, les interfaces et le fake.",
+    todo: ["<code>Shift</code> v2 : <code>volunteerIds</code>, sans <code>teamId</code> ni <code>assigneeIds</code> ; l'id est le début en epoch ms", "Règles des tranches : 2 h, 12 tranches par jour (00 à 22), une heure impaire refusée", "<code>ShiftRepository</code> (lire trié, ouvrir, fermer) et <code>FakeShiftRepository</code>", "<code>MembershipRequest.shiftIds</code> (absent = liste vide) et <code>updateShifts()</code>, PENDING seulement", "Section <code>shifts</code> de <code>docs/firestore-schema.md</code>"],
+    note: "Mergée le jour 1, reviewée en moins de 2 h par Sefa, Mattia et Yuael.",
+    deps: [], after: [], wires: [], imgs: ["2146-7246", "2146-7289"], figma: "2146-7246" },
+  { n: 593, code: "T2", who: "thibaud", est: 150, prio: "P0", story: 585, short: "Shifts dans Firestore",
+    title: "Store the shifts in Firestore",
+    sum: "Le repository Firestore des shifts et leurs règles : un bénévole lit les shifts avant même d'être participant.",
+    todo: ["<code>FirestoreShiftRepository</code> dans le <code>RepositoryProvider</code> ; ouvrir deux fois la même tranche laisse un seul document", "Lecture : tout utilisateur connecté, comme <code>teams</code>", "Création et suppression : l'orga seulement, tranche de 2 h, <code>volunteerIds</code> vide, jamais une tranche choisie", "Tests émulateur : <code>FirestoreShiftRepositoryTest</code>, <code>ShiftRulesTest</code>"],
+    note: "<code>firestore.rules</code> est aussi touché par #594, #613 et #619 : petits blocs séparés, rebase sur le premier mergé.",
+    deps: [592], after: [], wires: [], imgs: ["2146-7289"], figma: "1954-5720" },
+  { n: 594, code: "T3", who: "thibaud", est: 270, prio: "P0", story: 502, short: "Shifts des candidatures",
+    title: "Record the shifts a volunteer applies to",
+    sum: "Les shifts choisis sont enregistrés avec la candidature, dans la même transaction, et chaque shift sait qui l'a choisi.",
+    todo: ["<code>apply</code> écrit <code>shiftIds</code> et ajoute le uid dans <code>volunteerIds</code> des shifts choisis", "<code>updateShifts</code> (PENDING seulement) déplace le uid", "<code>withdraw</code> et <code>reject</code> libèrent les shifts", "Règles : un bénévole n'ajoute ou ne retire que son propre uid, cohérent avec sa demande (<code>getAfter</code>)"],
+    note: "À merger AVANT #595, #599 et #603 : ils touchent tous <code>MembershipRequestRepositoryFirestore</code>.",
+    deps: [592, 593], after: [], wires: [], imgs: ["2146-7890", "2146-7626"], figma: "2146-7890" },
+  { n: 595, code: "T4", who: "thibaud", est: 90, prio: "P2", story: 588, short: "Notif nouvelle candidature",
+    title: "Notify organizers of new applications",
+    sum: "L'orga reçoit une notif quand quelqu'un postule à son event.",
+    todo: ["Dans la transaction de <code>apply()</code>, une NEW_APPLICATION dans la boîte de l'orga", "<code>NewApplicationFormat</code> : « Alice Martin applied to Summer Festival », ou « 3 new applications at … »", "Le tap ouvre People › Requests", "Test émulateur et <code>NewApplicationFormatTest</code>"],
+    note: "Tâche tampon : si Thibaud est en retard, le premier qui a fini la reprend.",
+    deps: [613, 594], after: [], wires: [], imgs: ["1967-6052"], figma: "1967-6052" },
+
+  { n: 598, code: "N1", who: "sefa", est: 180, prio: "P0", story: 585, short: "Grille ShiftGrid",
+    title: "Build the week grid of shifts, shared by organizers and volunteers",
+    sum: "La grille partagée : une colonne par jour, une ligne par tranche de 2 h. Un seul composable pour l'orga et les bénévoles.",
+    todo: ["<code>ShiftGrid</code> sans état dans <code>ui/components/shifts/</code>, trois modes : View, Edit, Pick", "Edit : + sur une tranche fermée, × sur une ouverte, cadenas et nombre sur une choisie", "Pick : seules les tranches ouvertes se cochent, cochée = remplie avec une coche", "3 jours à l'écran, au-delà la grille défile ; cases d'au moins 48 dp ; tags <code>SLOT_SAT_10</code>"],
+    note: "Ta première PR, à merger tôt : #597, #600 et #601 l'utilisent.",
+    deps: [592], after: [], wires: [], imgs: ["2146-7246", "2146-7289", "2146-7626", "1957-5864"], figma: "2146-7246" },
+  { n: 596, code: "T5", who: "sefa", est: 90, prio: "P0", story: 585, short: "ViewModel des shifts",
+    title: "Add the ViewModel of the event's shifts",
+    sum: "Le ViewModel de l'écran Shifts, testé avec le fake dès le premier jour.",
+    todo: ["<code>ShiftsViewModel</code> : jours de l'event, tranches ouvertes et bénévoles de chacune", "Modes View et Edit ; un tap ouvre ou ferme une tranche, enregistré tout de suite", "Une tranche choisie reste, avec « Sat 10:00 stays · 3 volunteers chose it. »", "Heures ouvertes par jour et au total (« 26 h open over 3 days »)"],
+    note: "", deps: [592], after: [], wires: [], imgs: ["2001-6351", "2146-7289"], figma: "1954-5720" },
+  { n: 597, code: "T6", who: "sefa", est: 150, prio: "P0", story: 585, short: "Écran Shifts de l'orga",
+    title: "Let organizers open the shifts of their event in a week grid",
+    sum: "L'orga ouvre les tranches de son event dans la grille de la semaine : pas de formulaire, pas de nom.",
+    todo: ["<code>ShiftsScreen</code> : en-tête avec les heures ouvertes, Edit ou Done, la grille de #598", "État vide « No shifts yet » avec le bouton Open slots", "Bouton Shifts à côté de Manage teams, route <code>OrganizerEventScreen.ManageShifts</code>", "Test tags <code>ShiftsScreenTestTags</code> comme les frames Testing du Figma"],
+    note: "<code>OrganizerOverviewScreen.kt</code> est aussi touché par #610 et #615 : celui qui merge en second rebase.",
+    deps: [596, 598], after: [], wires: [593], imgs: ["2001-6259", "2001-6351", "2146-7289", "2146-7626", "2146-7890"], figma: "1954-5720" },
+  { n: 599, code: "T7", who: "sefa", est: 150, prio: "P2", story: 587, short: "Notif équipe du manager",
+    title: "Notify managers when their team changes",
+    sum: "Le manager est prévenu quand quelqu'un rejoint ou quitte son équipe, dans la même écriture que le changement.",
+    todo: ["TEAM_CHANGED écrit par <code>accept</code>, <code>reject</code>, <code>withdraw</code>, <code>moveToTeam</code>, <code>addMember</code>, <code>removeMember</code>", "Pas de notif sans manager, ni quand le manager agit lui-même", "Au départ, <code>missions</code> liste les missions dont il est retiré", "<code>TeamChangedFormat</code> : « Léa Petit left Bar — was on: … »"],
+    note: "Rebase sur #594, mergée d'abord ; #603 touche aussi <code>accept</code> et <code>reject</code>.",
+    deps: [613], after: [594], wires: [], imgs: ["1966-6240"], figma: "1966-6240" },
+
+  { n: 600, code: "T9", who: "mattia", est: 210, prio: "P0", story: 502, short: "Choisir ses shifts (Join)",
+    title: "Let volunteers pick their shifts in the week grid when they apply",
+    sum: "Le bénévole coche ses tranches dans la même grille que l'orga quand il postule.",
+    todo: ["<code>JoinEventViewModel</code> charge les shifts avec les équipes et garde les tranches cochées", "Au moins un shift si l'event en a, sinon Apply est désactivé (« Pick at least one shift to apply. »)", "Fonction pure dans <code>model/shift/</code> qui joint les tranches qui se suivent (« Sat 10–14 »), réutilisée par #601 et #602", "La demande contient <code>shiftIds</code> et <code>availability</code> = les tranches jointes"],
+    note: "", deps: [592, 598], after: [], wires: [594], imgs: ["1957-5864", "1957-5971"], figma: "1957-5860" },
+  { n: 601, code: "T10", who: "mattia", est: 120, prio: "P0", story: 502, short: "Changer ses shifts",
+    title: "Let volunteers change their shifts while pending",
+    sum: "Le bénévole change ses shifts depuis sa carte Pending, tant que l'orga n'a pas répondu.",
+    todo: ["Bouton « Change my shifts » sur la carte Pending, si l'event a des shifts", "Bottom sheet avec la grille en Pick, préremplie, Cancel et « Save my shifts »", "Appelle <code>updateShifts</code> ; au moins un shift reste coché ; un échec garde le sheet avec un message", "Rien sur une carte acceptée ou refusée"],
+    note: "", deps: [598, 600], after: [], wires: [594], imgs: ["1959-5860", "1959-5968"], figma: "1959-5860" },
+  { n: 602, code: "T11", who: "mattia", est: 90, prio: "P1", story: 502, short: "Shifts dans les demandes",
+    title: "Show the chosen shifts in each application",
+    sum: "L'orga voit les shifts choisis dans chaque candidature, en chips.",
+    todo: ["<code>MembershipRequestVM</code> charge les shifts de l'event une fois", "Chips sous le nom : « Fri 18–20 », « Sat 10–14 », triées, tranches jointes", "Un shift supprimé est ignoré ; pas de chips sans shifts"],
+    note: "", deps: [592, 600], after: [], wires: [], imgs: ["1959-6118"], figma: "1959-6118" },
+  { n: 603, code: "T12", who: "mattia", est: 180, prio: "P1", story: 29, short: "Notif candidature décidée",
+    title: "Notify volunteers when their application is decided",
+    sum: "Le bénévole est prévenu quand sa candidature est acceptée ou refusée, et voit le refus dans My Events.",
+    todo: ["<code>accept()</code> et <code>reject()</code> écrivent une APPLICATION_DECIDED dans la même écriture", "« You're in! » ouvre l'Overview ; « … declined your application » ouvre My Events", "My Events montre les demandes REJECTED avec le badge Rejected, sans Withdraw"],
+    note: "Rebase sur #594, mergée d'abord ; #599 touche aussi <code>accept</code> et <code>reject</code>.",
+    deps: [613], after: [594], wires: [], imgs: ["1966-6170", "1967-6100"], figma: "1967-6100" },
+
+  { n: 604, code: "T13", who: "yuael", est: 30, prio: "P0", day1: true, story: 18, short: "Contrat du planning",
+    title: "Define the schedule proposal contract",
+    sum: "Le contrat du planning automatique, en Kotlin pur : Mehdi code l'écran contre lui dès le premier jour.",
+    todo: ["<code>TimeSlot</code>, <code>ScheduleCandidate</code>, <code>ScheduleProposal</code> dans <code>model/schedule/</code>", "<code>proposeSchedule()</code> qui renvoie une proposition vide", "La KDoc avec toutes les règles de #605"],
+    note: "Mergée le jour 1, reviewée en moins de 2 h par Mehdi.",
+    deps: [], after: [], wires: [], imgs: ["1998-6020"], figma: "1961-5905" },
+  { n: 605, code: "T14", who: "yuael", est: 240, prio: "P0", story: 18, short: "Algo du planning",
+    title: "Propose a schedule from shifts, teams and hours worked",
+    sum: "L'algorithme propose un planning juste à partir des shifts, des équipes et des heures déjà faites, sans jamais retirer personne.",
+    todo: ["Missions à venir dans l'ordre de <code>startAt</code> ; terminées et passées ignorées", "Candidat : membre de l'équipe, ses tranches couvrent toute la mission, aucune mission qui chevauche", "Le moins d'heures d'abord, égalité départagée par <code>userId</code> ; les missions General ne sont jamais remplies", "Missions incomplètes dans <code>unfilled</code> ; relancer l'algo sur son résultat ne propose plus rien"],
+    note: "", deps: [604], after: [], wires: [], imgs: ["1998-6020", "1998-6222"], figma: "1961-5905" },
+  { n: 606, code: "T15", who: "yuael", est: 120, prio: "P0", story: 18, short: "Affecter en un batch",
+    title: "Assign several missions in one write",
+    sum: "Accepter la proposition se fait en une seule écriture, tout ou rien, avec une seule notif par bénévole.",
+    todo: ["<code>MissionRepository.addAssignees(eventId, additions)</code> en un seul batch", "Une seule MISSION_ASSIGNED par bénévole, avec toutes ses nouvelles missions", "Jamais au-delà de <code>volunteersNeeded</code>, jamais sur une mission terminée"],
+    note: "<code>FirestoreMissionRepository</code> est aussi touché par #617 : partager le builder du document MISSION_ASSIGNED avec Liam.",
+    deps: [613], after: [], wires: [], imgs: ["1966-6170"], figma: "1961-5905" },
+  { n: 607, code: "T16", who: "yuael", est: 180, prio: "P0", story: 18, short: "ViewModel du planning",
+    title: "Load and accept the proposed schedule",
+    sum: "Le ViewModel charge tout, lance l'algo pour tout l'event et expose la proposition un jour à la fois.",
+    todo: ["Candidats : les tranches actuelles de leurs <code>shiftIds</code>, sinon leur <code>availability</code>", "<code>proposeSchedule</code> une fois pour tout l'event", "Par jour : missions, affectés, proposés, places manquantes, et les totaux", "<code>accept()</code> appelle <code>addAssignees</code>, puis recharge ; état « nothing to propose »"],
+    note: "Débloque le branchement de l'écran #610 (Mehdi).",
+    deps: [592, 604, 606], after: [], wires: [], imgs: ["1998-6020", "1998-6139", "1963-6141"], figma: "1961-5905" },
+  { n: 608, code: "T17", who: "yuael", est: 120, prio: "P2", story: 588, short: "Notif places vides",
+    title: "Notify organizers of missions short of volunteers",
+    sum: "L'orga est prévenu des missions des prochaines 24 h qui manquent encore de monde.",
+    todo: ["<code>OpenSpots</code>, un <code>TimedCheck</code> calculé sur le téléphone", "Une notif par mission (« Set up the stands at 08:00 still needs 2 volunteers. »), montrée une seule fois", "Le tap ouvre la mission"],
+    note: "", deps: [613], after: [], wires: [614], imgs: ["1967-6052"], figma: "1967-6052" },
+
+  { n: 609, code: "T18", who: "mehdi", est: 90, prio: "P1", day1: true, story: 590, short: "Play Console",
+    title: "Set up Shifter in the Play Console",
+    sum: "Créer le compte Play Console dès le jour 1 : la vérification d'identité prend plusieurs jours. Hors code.",
+    todo: ["Compte développeur (25 $, qui paie : à décider avec le PO) et l'app <code>com.swent.shifter</code>", "Lancer la vérification d'identité le jour 1", "Pistes « test interne » et « test fermé » avec les comptes des testeurs (viser 12 testeurs pendant 14 jours)", "Formulaires App content ; dans le wiki, où vit le compte (jamais les identifiants)"],
+    note: "", deps: [], after: [], wires: [], imgs: [], figma: "" },
+  { n: 610, code: "T20", who: "mehdi", est: 300, prio: "P0", story: 18, short: "Écran Generate schedule",
+    title: "Show the proposed schedule one day at a time and accept it in one tap",
+    sum: "L'orga voit la proposition jour par jour et l'accepte en un tap avant qu'elle soit enregistrée.",
+    todo: ["Bouton Generate schedule sur l'Overview orga, route <code>OrganizerEventScreen.AutoSchedule</code>", "Résumé de l'event, day strip, et pour chaque mission un <code>PersonChip</code> par personne (bleu proposé, gris déjà affecté)", "Mission incomplète : « 2 spots to fill by hand · Assign » ; état « Nothing to propose »", "Cancel et « Accept all 3 days »"],
+    note: "Sortir <code>AssignDialog</code> de <code>OrganizerOverviewScreen.kt</code> : se mettre d'accord avec Luigi (#615) sur qui le fait en premier. <code>PersonChip</code> est partagé avec #615.",
+    deps: [604], after: [], wires: [607], imgs: ["1998-6020", "1998-6139", "1998-6222", "1963-6141"], figma: "1961-5905" },
+  { n: 611, code: "T8", who: "mehdi", est: 180, prio: "P2", story: 587, short: "Notif check-in manqué",
+    title: "Notify managers of a missing check-in",
+    sum: "Le manager est prévenu quand un bénévole de son équipe n'a pas fait son check-in 10 min après le début.",
+    todo: ["<code>MissedCheckIn</code>, un <code>TimedCheck</code> sur les missions des équipes que je gère", "« Bob Rossi hasn't checked in to Serve at the bar (12:00). », une seule fois", "<code>checkAt(startAt + 10 min)</code> pour que la notif arrive à l'heure", "Même logique que la carte « now » du manager (#528)"],
+    note: "", deps: [613], after: [], wires: [614], imgs: ["1966-6240"], figma: "1966-6240" },
+  { n: 612, code: "T25", who: "mehdi", est: 150, prio: "P1", story: 29, short: "Tap → bon écran",
+    title: "Open the right screen when a notification is tapped",
+    sum: "Le tap sur une notif ouvre le bon écran, dans le bon mode, app ouverte ou fermée.",
+    todo: ["<code>MainActivity</code> lit la cible (<code>onCreate</code>, <code>onNewIntent</code>) et la passe à <code>ShifterNavHost</code>", "Une cible par type : Overview, Planning sur un jour, mission, canal, Requests, My Events", "Une cible dans l'autre mode change de mode d'abord ; déconnecté : connexion puis la cible"],
+    note: "<code>ShifterNavHost.kt</code> est aussi touché par #597 et #610 : petits ajouts.",
+    deps: [613], after: [], wires: [], imgs: ["1966-6170"], figma: "1966-6052" },
+
+  { n: 613, code: "T23", who: "luigi", est: 120, prio: "P0", day1: true, story: 29, short: "Contrat des notifs",
+    title: "Define the notification contract",
+    sum: "La boîte aux lettres dans Firestore, sans serveur : le contrat, les règles et les fakes. Chaque type de notif devient indépendant.",
+    todo: ["<code>NotificationKind</code> (8 types), <code>InboxNotification</code>, <code>InboxDocs</code>, <code>NotificationInbox</code>", "<code>NotificationTarget</code>, <code>AppNotification</code>, <code>NotificationFormat</code>, <code>TimedCheck</code>, préférences et scheduler", "Règles de <code>users/{uid}/notifications</code> : créer à son nom seulement, le propriétaire lit et supprime", "Fakes, <code>strings_notifications.xml</code> (une section par type), <code>docs/firestore-schema.md</code>"],
+    note: "Bloque 13 PR. Mergée le jour 1, reviewée en moins de 2 h.",
+    deps: [], after: [], wires: [], imgs: ["1966-6170", "1966-6240", "1967-6052"], figma: "1966-6052" },
+  { n: 614, code: "T24", who: "luigi", est: 270, prio: "P0", story: 29, short: "Moteur de notifs Android",
+    title: "Show Android notifications from the inbox and the timed checks",
+    sum: "Le moteur qui transforme la boîte et les TimedCheck en vraies notifs Android : barre d'état, écran verrouillé, son.",
+    todo: ["<code>NotificationEngine.run</code> : un format par type, les TimedCheck, les préférences, <code>AndroidNotifier</code>", "App ouverte : <code>observePending</code> ; app fermée : WorkManager toutes les 15 min", "Un canal Android par type ; <code>POST_NOTIFICATIONS</code> demandée une fois", "Supprime ce qui est traité, ignore ce qui a plus de 48 h"],
+    note: "", deps: [613], after: [], wires: [616], imgs: ["1966-6056", "1966-6170", "1969-6276"], figma: "1966-6052" },
+  { n: 615, code: "N3", who: "luigi", est: 240, prio: "P1", story: 18, short: "Overview orga par jour",
+    title: "Show the organizer Overview's missions one day at a time, with who is on each",
+    sum: "L'Overview orga montre les missions jour par jour, avec qui est sur chacune.",
+    todo: ["Filtre d'équipe en menu (« All teams ⌄ ») à droite de « Missions »", "Day strip sur la semaine de l'event, jours hors event grisés et non cliquables", "Chaque mission : un <code>PersonChip</code> par affecté, statut (« 2 spots open », « Full ») et Assign", "Bannière « No schedule yet » tant que personne n'est affecté"],
+    note: "<code>PersonChip</code> partagé avec #610 et <code>AssignDialog</code> à sortir : se mettre d'accord avec Mehdi.",
+    deps: [], after: [], wires: [], imgs: ["1993-6090", "1998-6330"], figma: "1993-6090" },
+
+  { n: 616, code: "T32", who: "liam", est: 90, prio: "P0", story: 29, short: "Lire la boîte",
+    title: "Read the notification inbox from Firestore",
+    sum: "Le téléphone lit, suit et vide sa propre boîte aux lettres. À faire en premier : le branchement final l'attend.",
+    todo: ["<code>FirestoreNotificationInbox</code> dans le <code>RepositoryProvider</code>", "<code>pending</code> trié par <code>createdAt</code>, <code>observePending</code> en listener, <code>remove</code> en batch", "Tests émulateur des règles de #613, côté lecture"],
+    note: "La seule tâche de notifs que le branchement final attend.",
+    deps: [613], after: [], wires: [], imgs: ["1966-6170"], figma: "1966-6052" },
+  { n: 617, code: "T27", who: "liam", est: 180, prio: "P1", story: 586, short: "Notif missions",
+    title: "Notify volunteers of new, removed and changed missions",
+    sum: "Le bénévole est prévenu des missions ajoutées, retirées, ou qui changent d'heure ou de lieu.",
+    todo: ["<code>updateAssignees</code> : MISSION_ASSIGNED (ADDED ou REMOVED) en comparant avant et après", "<code>updateMission</code> : MISSION_CHANGED si l'horaire ou l'adresse change", "<code>MissionAssignedFormat</code> regroupe par event (« 3 new missions at Summer Festival »)", "Le tap ouvre le Planning au jour de la mission"],
+    note: "Partager le builder MISSION_ASSIGNED avec <code>addAssignees</code> (#606, Yuael).",
+    deps: [613], after: [], wires: [], imgs: ["1966-6170"], figma: "1966-6170" },
+  { n: 618, code: "T28", who: "liam", est: 150, prio: "P1", story: 33, short: "Notif annonces",
+    title: "Notify volunteers of announcements",
+    sum: "Le bénévole reçoit une notif pour chaque annonce qui lui est envoyée.",
+    todo: ["Dans <code>send(…, announcement = true)</code>, un batch : le message et une ANNOUNCEMENT par destinataire", "General : participants acceptés ; Team : membres et manager ; Admin : managers ; jamais l'expéditeur", "Au-delà de 500 écritures, plusieurs batchs", "<code>AnnouncementFormat</code> : « Summer Festival · General: Alice: Gates open at 18:00. »"],
+    note: "", deps: [613], after: [], wires: [], imgs: ["1966-6170"], figma: "1966-6170" },
+  { n: 619, code: "T29", who: "liam", est: 120, prio: "P2", story: 589, short: "Choix de notifs (profil)",
+    title: "Save notification choices on the profile",
+    sum: "Les choix de notifs sont enregistrés sur le profil et suivent l'utilisateur sur un autre téléphone.",
+    todo: ["Champ <code>users/{uid}.notificationSettings</code> = {type: bool}, absent = activé", "<code>setNotificationEnabled</code> et <code>observeNotificationSettings</code>", "<code>NotificationPreferences</code> branché dessus ; règles et tests émulateur"],
+    note: "", deps: [613], after: [], wires: [], imgs: ["1969-6056"], figma: "1969-6052" },
+  { n: 620, code: "T30", who: "liam", est: 150, prio: "P2", story: 589, short: "Réglages des notifs",
+    title: "Let users turn each kind of notification on or off",
+    sum: "Un switch par type de notif dans Settings, groupés par rôle.",
+    todo: ["Section Notifications : As a volunteer, As a manager, As an organizer", "Switch désactivé pendant le chargement ; un échec remet la valeur et le dit", "« Saved on your account: your choices follow you to another phone. »"],
+    note: "", deps: [619], after: [], wires: [], imgs: ["1969-6056", "1969-6166"], figma: "1969-6052" },
+];
+
+const SHARED = [
+  { file: "MembershipRequestRepositoryFirestore", text: "#594 d'abord, puis les autres rebasent dessus.", order: [[594], [595, 599, 603]] },
+  { file: "OrganizerOverviewScreen.kt", text: "Trois petites parties : celui qui merge en second rebase. Sortir AssignDialog : #610 ou #615, à décider entre Mehdi et Luigi.", order: [[597, 610, 615]] },
+  { file: "FirestoreMissionRepository", text: "Deux méthodes séparées : partager le builder du document MISSION_ASSIGNED.", order: [[606, 617]] },
+  { file: "firestore.rules", text: "Quatre blocs séparés : rebase sur le premier mergé.", order: [[593, 594, 613, 619]] },
+  { file: "ShifterNavHost.kt", text: "Petits ajouts de routes et de cibles.", order: [[597, 610, 612]] },
+  { file: "PersonChip (ui/components/)", text: "Le premier mergé l'ajoute, l'autre le réutilise.", order: [[610, 615]] },
+];
+
+const FINAL = [
+  { role: "Organisateur", items: [["2001-6259", [597]], ["2146-7289", [597, 598]], ["2146-7626", [597, 598]], ["1959-6118", [602]], ["1998-6020", [610, 607]], ["1998-6222", [610]], ["1998-6330", [615]]] },
+  { role: "Bénévole", items: [["1957-5864", [600, 598]], ["1959-5860", [601]], ["1959-5968", [601]], ["1967-6100", [603]], ["1966-6170", [617, 618, 603, 612]]] },
+  { role: "Notifications du manager et de l'orga", items: [["1966-6240", [599, 611]], ["1967-6052", [595, 608]], ["1966-6056", [614]]] },
+  { role: "Réglages", items: [["1969-6056", [620, 619]], ["1969-6166", [620]], ["1969-6276", [614]]] },
+];
+
+/* ---------- state ---------- */
+const BY = Object.fromEntries(TASKS.map(t => [t.n, t]));
+const PBY = Object.fromEntries(PEOPLE.map(p => [p.id, p]));
+const RANK = { todo: 0, dev: 1, review: 2, done: 3 };
+const STATES = ["todo", "dev", "review", "done"];
+let board = { syncedAt: null, items: {} };
+let manual = {};
+let live = false, dbRef = null, canWrite = null;
+
+const blockers = t => [...t.deps, ...t.after];
+const dependents = n => TASKS.filter(t => blockers(t).includes(n));
+function allDependents(n, acc = new Set()) { for (const t of dependents(n)) if (!acc.has(t.n)) { acc.add(t.n); allDependents(t.n, acc); } return acc; }
+function allBlockers(n, acc = new Set()) { for (const b of blockers(BY[n])) if (!acc.has(b)) { acc.add(b); allBlockers(b, acc); } return acc; }
+const depthMemo = {};
+function depth(n) { if (n in depthMemo) return depthMemo[n]; const b = blockers(BY[n]); return depthMemo[n] = b.length ? 1 + Math.max(...b.map(depth)) : 0; }
+
+function boardState(n) { const it = board.items[String(n)]; return it && STATES.includes(it.state) ? it.state : "todo"; }
+function manualState(n) { const m = manual[String(n)]; return m && STATES.includes(m.state) ? m.state : null; }
+function workState(n) { const b = boardState(n), m = manualState(n); return m && RANK[m] > RANK[b] ? m : b; }
+const isDone = n => workState(n) === "done";
+const unmet = t => blockers(t).filter(b => !isDone(b));
+function view(n) { // done | review | dev | ready | wait
+  const w = workState(n);
+  if (w === "done") return "done";
+  if (unmet(BY[n]).length) return w === "todo" ? "wait" : w;
+  return w === "todo" ? "ready" : w;
+}
+const LABEL = { done: "Mergée", review: "En review", dev: "En dev", ready: "Prête", wait: "En attente" };
+const ICON = {
+  done: '<svg viewBox="0 0 16 16" class="ic" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  review: '<svg viewBox="0 0 16 16" class="ic" aria-hidden="true"><circle cx="5" cy="4" r="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="12" r="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 6v6.5M5 9c0 2 2 3 4.2 3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  dev: '<svg viewBox="0 0 16 16" class="ic" aria-hidden="true"><path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  ready: '<svg viewBox="0 0 16 16" class="ic" aria-hidden="true"><path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  wait: '<svg viewBox="0 0 16 16" class="ic" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 7V5.2a2.5 2.5 0 015 0V7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+};
+const pill = v => `<span class="pill ${v}">${ICON[v]}${LABEL[v]}</span>`;
+const dur = m => m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? " " + String(m % 60).padStart(2, "0") : ""}`;
+const hours = m => (Math.round(m / 6) / 10).toString().replace(".", ",") + " h";
+const who = n => PBY[BY[n].who].name;
+const mini = (n, showWho = true) => { const v = view(n); return `<button class="mini ${v}" data-open="${n}" title="${esc(BY[n].title)} · ${LABEL[v]}">${v === "done" ? "✓ " : ""}#${n}${showWho ? ` <span class="who">${who(n)}</span>` : ""}</button>`; };
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+const prsOf = n => { const it = board.items[String(n)]; return it && Array.isArray(it.prs) ? it.prs.filter(p => Number.isInteger(p.n)) : []; };
+
+/* ---------- nav & routing ---------- */
+function route() { const h = location.hash.slice(1); return PBY[h] ? h : "vue"; }
+function renderNav() {
+  const r = route();
+  document.getElementById("nav").innerHTML =
+    `<a href="#vue" class="overview" ${r === "vue" ? 'aria-current="page"' : ""}>Vue d'ensemble</a>` +
+    PEOPLE.map(p => {
+      const mine = TASKS.filter(t => t.who === p.id), done = mine.filter(t => isDone(t.n)).length;
+      return `<a href="#${p.id}" ${r === p.id ? 'aria-current="page"' : ""}><span class="av">${p.name[0]}</span>${p.name}<span class="cnt">${done}/${mine.length}</span></a>`;
+    }).join("");
+}
+
+/* ---------- overview ---------- */
+function renderOverview() {
+  const counts = { done: 0, review: 0, dev: 0, ready: 0, wait: 0 };
+  let minDone = 0, minAll = 0;
+  for (const t of TASKS) { counts[view(t.n)]++; minAll += t.est; if (isDone(t.n)) minDone += t.est; }
+  const total = TASKS.length;
+  const seg = k => counts[k] ? `<span class="${k}" style="width:${counts[k] / total * 100}%"></span>` : "";
+  const contractsLeft = CONTRACTS.filter(n => !isDone(n));
+  const waitingOnContracts = new Set(); contractsLeft.forEach(n => allDependents(n).forEach(d => { if (!isDone(d)) waitingOnContracts.add(d); }));
+
+  const day1 = TASKS.filter(t => t.day1).map(t => {
+    const unl = allDependents(t.n).size;
+    return `<button class="d1" data-open="${t.n}">
+      <div class="row"><span class="mono">#${t.n} · ${t.code}</span>${pill(view(t.n))}</div>
+      <h3>${t.short}</h3>
+      <p>${t.title} · ${who(t.n)} · ${dur(t.est)}</p>
+      <span class="unl">${unl ? `Débloque ${unl} PR` : "Hors code, lancer le jour 1"}</span>
+    </button>`;
+  }).join("");
+
+  const cols = [0, 1, 2, 3];
+  const colHead = ["Rien à attendre", "1 merge avant", "2 merges avant", "3 merges avant"];
+  const colSub = ["contrats et tâches libres", "après un contrat", "", "fin de chaîne"];
+  let map = `<div class="colh" style="border-right:1px solid var(--line)">Personne</div>` +
+    cols.map(c => `<div class="colh">${colSub[c] || "&nbsp;"}<b>${colHead[c]}</b></div>`).join("");
+  PEOPLE.forEach((p, i) => {
+    const first = i === 0 ? " lane-first" : "";
+    map += `<div class="lane-name${first}" style="border-right:1px solid var(--line)"><span class="av">${p.name[0]}</span><a href="#${p.id}">${p.name}</a></div>`;
+    for (const c of cols) {
+      const chips = TASKS.filter(t => t.who === p.id && depth(t.n) === c).map(t => {
+        const v = view(t.n);
+        return `<button class="chip ${v}" data-n="${t.n}" data-open="${t.n}" aria-label="#${t.n} ${esc(t.short)}, ${LABEL[v]}"><span class="num">#${t.n}</span><span class="lbl">${t.short}</span>${ICON[v]}</button>`;
+      }).join("");
+      map += `<div class="cell${first}">${chips}</div>`;
+    }
+  });
+
+  const shared = SHARED.map(s => `<div class="note"><h3>${esc(s.file)}</h3>
+      <div class="order-line">${s.order.map(g => g.map(n => mini(n)).join("")).join('<span class="arrow">puis</span>')}</div>
+      <p>${esc(s.text)}</p></div>`).join("");
+
+  const gal = FINAL.map(g => `<div class="gal-group"><h3>${g.role}</h3><div class="gal">${g.items.map(([id, ns]) => {
+    const built = ns.every(isDone);
+    return `<figure><button class="shot" data-img="${id}" aria-label="Agrandir : ${esc(IMG[id])}"><img src="img/${id}.png" alt="${esc(IMG[id])}" loading="lazy"></button>
+      <figcaption>${esc(IMG[id])}<span class="tags">${ns.map(n => mini(n, false)).join("")}${built ? '<span class="pill done">' + ICON.done + 'Construit</span>' : ""}</span></figcaption></figure>`;
+  }).join("")}</div></div>`).join("");
+
+  return `
+  <section>
+    <h2>Où en est le sprint</h2>
+    <p class="lede">29 PR, 75 h prévues. Une PR passe en « Mergée » quand son issue passe en Done sur le Scrum Board ; celles qui l'attendaient deviennent « Prêtes ».</p>
+    <div class="stats">
+      <div class="stat"><span class="k">Mergées</span><span class="v">${counts.done}<small> / ${total}</small></span></div>
+      <div class="stat"><span class="k">Heures mergées</span><span class="v">${hours(minDone)}<small> / ${hours(minAll)}</small></span></div>
+      <div class="stat"><span class="k">Prêtes ou en cours</span><span class="v">${counts.ready + counts.dev + counts.review}</span></div>
+      <div class="stat"><span class="k">En attente d'une merge</span><span class="v">${counts.wait}</span></div>
+    </div>
+    <div class="bar" role="img" aria-label="${counts.done} mergées, ${counts.review} en review, ${counts.dev} en dev, ${counts.ready} prêtes, ${counts.wait} en attente">${seg("done")}${seg("review")}${seg("dev")}${seg("ready")}${seg("wait")}</div>
+    <div class="legend"><span><i style="background:var(--done)"></i>Mergée ${counts.done}</span><span><i style="background:var(--review)"></i>En review ${counts.review}</span><span><i style="background:var(--dev)"></i>En dev ${counts.dev}</span><span><i style="background:var(--accent)"></i>Prête ${counts.ready}</span><span><i style="background:var(--wait);opacity:.55"></i>En attente ${counts.wait}</span></div>
+  </section>
+
+  <section>
+    <h2>Jour 1 : les contrats d'abord</h2>
+    <p class="lede">${contractsLeft.length
+      ? `Tant que ${contractsLeft.map(n => "#" + n).join(", ")} ${contractsLeft.length > 1 ? "ne sont pas mergées" : "n'est pas mergée"}, ${waitingOnContracts.size} PR attendent. Chacun code déjà contre le contrat avec les fakes ; reviewez ces PR en moins de 2 h.`
+      : "Les trois contrats sont mergés : plus personne n'attend un contrat."}</p>
+    <div class="dayone">${day1}</div>
+  </section>
+
+  <section>
+    <h2>Les dépendances</h2>
+    <p class="lede">Une ligne par personne. Une PR est placée selon le nombre de merges qu'il lui faut avant elle. Survole ou touche une PR pour voir sa chaîne ; clique pour le détail.</p>
+    <div class="map-tools">
+      <span><svg width="34" height="8"><path d="M1 4h32" stroke="var(--edge)" stroke-width="1.6"/></svg> a besoin du code</span>
+      <span><svg width="34" height="8"><path d="M1 4h32" stroke="var(--edge)" stroke-width="1.6" stroke-dasharray="5 4"/></svg> ordre de merge (même fichier)</span>
+      <span><svg width="34" height="8"><path d="M1 4h32" stroke="var(--done)" stroke-width="1.6" opacity=".6"/></svg> déjà mergée</span>
+    </div>
+    <div class="map-scroll"><div class="map" id="map">${map}<svg class="edges" id="edges" aria-hidden="true"></svg></div></div>
+  </section>
+
+  <section>
+    <h2>Fichiers partagés : l'ordre de merge</h2>
+    <p class="lede">Ces PR touchent les mêmes fichiers. Elles ne bloquent pas le travail, mais l'ordre évite les conflits. Le SM surveille.</p>
+    <div class="notes">${shared}</div>
+  </section>
+
+  <section>
+    <h2>L'app à la fin du sprint 7</h2>
+    <p class="lede">Les écrans du Mockup Figma, tels que l'app les rendra quand toutes les PR seront mergées. Sous chaque écran, les PR qui le construisent.</p>
+    ${gal}
+  </section>`;
+}
+
+function drawEdges() {
+  const mapEl = document.getElementById("map"), svg = document.getElementById("edges");
+  if (!mapEl || !svg) return;
+  const mr = mapEl.getBoundingClientRect();
+  svg.setAttribute("width", mapEl.scrollWidth); svg.setAttribute("height", mapEl.scrollHeight);
+  svg.setAttribute("viewBox", `0 0 ${mapEl.scrollWidth} ${mapEl.scrollHeight}`);
+  const pos = {};
+  mapEl.querySelectorAll(".chip").forEach(c => { const r = c.getBoundingClientRect(); pos[c.dataset.n] = { l: r.left - mr.left, r: r.right - mr.left, y: r.top - mr.top + r.height / 2 }; });
+  let out = "";
+  for (const t of TASKS) {
+    for (const [list, cls] of [[t.deps, "need"], [t.after, "order"]]) {
+      for (const b of list) {
+        const a = pos[b], z = pos[t.n]; if (!a || !z) continue;
+        const x1 = a.r, x2 = z.l, dx = Math.max(24, (x2 - x1) / 2);
+        out += `<path class="${cls}${isDone(b) ? " met" : ""}" data-from="${b}" data-to="${t.n}" d="M${x1} ${a.y} C${x1 + dx} ${a.y}, ${x2 - dx} ${z.y}, ${x2} ${z.y}"/>`;
+      }
+    }
+  }
+  svg.innerHTML = out;
+}
+function focusChain(n) {
+  const mapEl = document.getElementById("map"); if (!mapEl) return;
+  if (n == null) { mapEl.classList.remove("focus"); mapEl.querySelectorAll(".hl,.me").forEach(e => e.classList.remove("hl", "me")); return; }
+  const set = new Set([n, ...allBlockers(n), ...allDependents(n)]);
+  mapEl.classList.add("focus");
+  mapEl.querySelectorAll(".chip").forEach(c => { const k = +c.dataset.n; c.classList.toggle("hl", set.has(k)); c.classList.toggle("me", k === n); });
+  mapEl.querySelectorAll(".edges path").forEach(p => p.classList.toggle("hl", set.has(+p.dataset.from) && set.has(+p.dataset.to)));
+}
+
+/* ---------- person ---------- */
+function thumbs(t, max) {
+  const ids = max ? t.imgs.slice(0, max) : t.imgs;
+  return ids.length ? `<div class="thumbs">${ids.map(id => `<button data-img="${id}" aria-label="Agrandir : ${esc(IMG[id])}"><img src="img/${id}.png" alt="${esc(IMG[id])}" loading="lazy"></button>`).join("")}</div>` : "";
+}
+function links(t) {
+  const prs = prsOf(t.n).map(p => `<a href="${REPO}/pull/${p.n}" target="_blank" rel="noopener">PR #${p.n}${p.state === "MERGED" ? " (mergée)" : p.state === "CLOSED" ? " (fermée)" : ""} ↗</a>`).join("");
+  return `<a href="${REPO}/issues/${t.n}" target="_blank" rel="noopener">Issue #${t.n} ↗</a>${prs}${t.figma ? `<a href="${FIGMA}${t.figma}" target="_blank" rel="noopener">Figma ↗</a>` : ""}`;
+}
+function waitHint(t) {
+  const u = unmet(t);
+  const others = u.filter(b => BY[b].who !== t.who), mine = u.filter(b => BY[b].who === t.who);
+  if (u.every(b => CONTRACTS.includes(b))) return `Tu peux déjà coder contre le contrat ${u.map(b => "#" + b).join(", ")} avec les fakes ; tu merges quand ${u.length > 1 ? "ils sont mergés" : "il est mergé"}.`;
+  if (!others.length) return `Après ta ${mine.map(b => "#" + b).join(" et ta ")}.`;
+  const ord = u.filter(b => t.after.includes(b));
+  if (ord.length === u.length) return `Code prêt avant, mais merge après ${ord.map(b => "#" + b).join(", ")} : même fichier, tu rebases dessus.`;
+  return `Commence avec les fakes ; merge quand ${u.map(b => "#" + b).join(", ")} ${u.length > 1 ? "sont mergées" : "est mergée"}.`;
+}
+function taskCard(t, order) {
+  const v = view(t.n), u = unmet(t), deps = dependents(t.n);
+  const rel = [];
+  if (u.length) rel.push(`<div class="rel-row"><span class="k">Attend</span>${u.map(b => mini(b) + (t.after.includes(b) ? '<span class="tag">ordre de merge</span>' : "")).join("")}</div>`);
+  if (deps.length) rel.push(`<div class="rel-row"><span class="k">Débloque</span>${deps.map(d => mini(d.n)).join("")}</div>`);
+  const pendingWires = t.wires.filter(w => !isDone(w));
+  if (pendingWires.length && v !== "done") rel.push(`<div class="rel-row"><span class="k">Branchement final</span>${pendingWires.map(w => mini(w)).join("")}<span class="tag">ne bloque pas</span></div>`);
+  return `<article class="task ${v}">
+    <div class="task-top">${order ? `<span class="ord">${order}</span>` : ""}<span class="ids">#${t.n} · ${t.code}</span>${t.day1 ? '<span class="tag day1">Jour 1</span>' : ""}<span class="tag">${t.prio}</span><span class="tag">${dur(t.est)}</span><span class="sp"></span>${pill(v)}</div>
+    <h3>${t.short}</h3>
+    <p class="en">${t.title}</p>
+    <p class="sum">${t.sum}</p>
+    ${v === "wait" ? `<p class="hint wait">${waitHint(t)}</p>` : ""}
+    ${thumbs(t, 3)}
+    ${rel.length ? `<div class="rel">${rel.join("")}</div>` : ""}
+    <div class="task-foot"><button class="btn" data-open="${t.n}">Ce qu'on veut, en détail</button>${links(t)}</div>
+  </article>`;
+}
+function renderPerson(id) {
+  const p = PBY[id];
+  const mine = TASKS.filter(t => t.who === id);
+  const minAll = mine.reduce((s, t) => s + t.est, 0), minDone = mine.filter(t => isDone(t.n)).reduce((s, t) => s + t.est, 0);
+  const prio = { review: 0, dev: 1, ready: 2 };
+  const now = mine.filter(t => ["ready", "dev", "review"].includes(view(t.n)))
+    .sort((a, b) => (b.day1 ? 1 : 0) - (a.day1 ? 1 : 0) || prio[view(a.n)] - prio[view(b.n)] || mine.indexOf(a) - mine.indexOf(b));
+  const waiting = mine.filter(t => view(t.n) === "wait");
+  const done = mine.filter(t => view(t.n) === "done");
+
+  const reviewSet = new Map();
+  waiting.forEach(t => unmet(t).filter(b => BY[b].who !== id).forEach(b => { if (!reviewSet.has(b)) reviewSet.set(b, []); reviewSet.get(b).push(t.n); }));
+  const reviews = [...reviewSet.entries()].map(([b, forN]) => {
+    const v = view(b), pr = prsOf(b).find(x => x.state === "OPEN");
+    const act = v === "review" ? (pr ? `<a href="${REPO}/pull/${pr.n}" target="_blank" rel="noopener">Va reviewer la PR #${pr.n} ↗</a>` : "PR ouverte : va la reviewer") : v === "dev" ? "En dev, pas encore de PR" : v === "wait" ? "Elle-même attend une merge" : "Pas encore commencée";
+    return `<li><span class="l1">${mini(b)}${pill(v)}</span><span>${act} · débloque ta ${forN.map(n => "#" + n).join(", ")}</span></li>`;
+  }).join("");
+
+  const waitMe = new Map();
+  mine.filter(t => !isDone(t.n)).forEach(t => dependents(t.n).filter(d => d.who !== id).forEach(d => { if (!waitMe.has(d.n)) waitMe.set(d.n, []); waitMe.get(d.n).push(t.n); }));
+  const waiters = [...waitMe.entries()].map(([d, from]) => `<li><span class="l1">${mini(d)}</span><span>attend ta ${from.map(n => "#" + n).join(", ")}</span></li>`).join("");
+
+  const emptyNow = waiting.length
+    ? `<div class="empty">Rien n'est prêt à merger. Commence <b>#${waiting[0].n}</b> : ${waitHint(waiting[0]).replace(/^./, c => c.toLowerCase())}</div>`
+    : `<div class="empty">Plus rien à faire : tout est mergé.</div>`;
+
+  return `
+  <section class="person-head">
+    <div class="big-av">${p.name[0]}</div>
+    <div><h2>${p.name}</h2><p class="role">${p.role} · <a href="https://github.com/${p.gh}" target="_blank" rel="noopener">@${p.gh}</a></p></div>
+    <div class="meter"><div class="v">${done.length}/${mine.length} mergées</div><div class="k">${hours(minDone)} sur ${hours(minAll)} prévues</div>
+      <div class="bar">${done.length ? `<span class="done" style="width:${minDone / minAll * 100}%"></span>` : ""}</div></div>
+  </section>
+  <div class="person-grid">
+    <div class="col">
+      <section>
+        <div class="sec-h"><h2>À faire en priorité</h2><span class="count">${now.length}</span></div>
+        <p class="lede">${p.note}</p>
+        <div class="list">${now.length ? now.map((t, i) => taskCard(t, i + 1)).join("") : emptyNow}</div>
+      </section>
+      <section>
+        <div class="sec-h"><h2>En attente d'une merge</h2><span class="count">${waiting.length}</span></div>
+        <p class="lede">Elles passent toutes seules dans « À faire en priorité » quand ce qu'elles attendent passe en Done sur le Scrum Board.</p>
+        <div class="list">${waiting.length ? waiting.map(t => taskCard(t)).join("") : '<div class="empty">Aucune PR en attente.</div>'}</div>
+      </section>
+      ${done.length ? `<section><div class="sec-h"><h2>Mergées</h2><span class="count">${done.length}</span></div>
+        <div class="merged-list">${done.map(t => `<div class="mrow">${pill("done")}<b>#${t.n} ${t.short}</b><span>${dur(t.est)}</span><button class="btn" data-open="${t.n}">Détail</button></div>`).join("")}</div></section>` : ""}
+    </div>
+    <aside class="side">
+      <div class="box"><h3>Reviews qui te débloquent</h3>${reviews ? `<ul>${reviews}</ul>` : "<p>Rien : aucune de tes PR n'attend quelqu'un d'autre.</p>"}</div>
+      <div class="box"><h3>Ils attendent tes PR</h3>${waiters ? `<ul>${waiters}</ul>` : "<p>Personne n'attend tes PR.</p>"}</div>
+    </aside>
+  </div>`;
+}
+
+/* ---------- dialog ---------- */
+const dlg = document.getElementById("dlg");
+let dlgTask = null;
+function openTask(n) { dlgTask = n; renderDialog(); if (!dlg.open) dlg.showModal(); }
+function renderDialog() {
+  if (dlgTask == null) return;
+  const t = BY[dlgTask], v = view(t.n), u = unmet(t), deps = dependents(t.n);
+  const b = boardState(t.n), m = manualState(t.n), it = board.items[String(t.n)];
+  const ctl = (live && canWrite !== false) ? `<div class="status-ctl"><h4>Changer le statut à la main</h4>
+      <div class="seg" role="group" aria-label="Statut">${STATES.map(s => `<button data-set="${s}" aria-pressed="${workState(t.n) === s}" ${RANK[s] < RANK[b] ? "disabled" : ""}>${{ todo: "À faire", dev: "En dev", review: "En review", done: "Mergée" }[s]}</button>`).join("")}</div>
+      <p>Le Scrum Board reste la source : ${it ? `il dit « ${esc(it.status || "—")} »` : "pas encore lu"}${m ? `. Statut mis à la main : ${LABEL[m === "todo" ? "ready" : m]}. <button class="btn" data-set="reset" style="padding:3px 9px;font-size:12px">Revenir au board</button>` : "."}</p></div>` : "";
+  dlg.innerHTML = `<div class="dlg">
+    <div class="dlg-head"><div><div class="task-top"><span class="ids">#${t.n} · ${t.code} · ${who(t.n)}</span>${t.day1 ? '<span class="tag day1">Jour 1</span>' : ""}<span class="tag">${t.prio}</span><span class="tag">${dur(t.est)}</span><span class="tag">story #${t.story}</span>${pill(v)}</div>
+      <h2 id="dlgTitle">${t.short}</h2><p class="en">${t.title}</p></div>
+      <button class="x" data-close aria-label="Fermer">×</button></div>
+    <div class="dlg-body">
+      <p style="margin:0;max-width:72ch">${t.sum}</p>
+      ${t.imgs.length ? `<div><h4>Ce qu'on veut à l'écran</h4><div class="shots">${t.imgs.map(id => `<figure><img src="img/${id}.png" alt="${esc(IMG[id])}" loading="lazy"><figcaption>${esc(IMG[id])}</figcaption></figure>`).join("")}</div></div>` : ""}
+      <div><h4>À faire dans la PR</h4><ul class="todo">${t.todo.map(x => `<li>${x}</li>`).join("")}</ul></div>
+      ${t.note ? `<p class="hint">${t.note}</p>` : ""}
+      ${v === "wait" ? `<p class="hint wait">${waitHint(t)}</p>` : ""}
+      <div class="rel">
+        ${blockers(t).length ? `<div class="rel-row"><span class="k">Dépend de</span>${blockers(t).map(x => mini(x) + (t.after.includes(x) ? '<span class="tag">ordre de merge</span>' : "")).join("")}</div>` : `<div class="rel-row"><span class="k">Dépend de</span><span>rien : à commencer tout de suite</span></div>`}
+        ${deps.length ? `<div class="rel-row"><span class="k">Débloque</span>${deps.map(d => mini(d.n)).join("")}</div>` : ""}
+        ${t.wires.length ? `<div class="rel-row"><span class="k">Branchement final</span>${t.wires.map(w => mini(w)).join("")}<span class="tag">ne bloque pas</span></div>` : ""}
+      </div>
+      <div class="task-foot">${links(t)}</div>
+      ${ctl}
+    </div></div>`;
+}
+function openImage(id) {
+  dlgTask = null;
+  dlg.innerHTML = `<div class="dlg"><div class="dlg-head"><h2 id="dlgTitle" style="font-size:17px">${esc(IMG[id])}</h2><button class="x" data-close aria-label="Fermer">×</button></div>
+    <div class="dlg-body img-only"><img src="img/${id}.png" alt="${esc(IMG[id])}"><p><a href="${FIGMA}${id}" target="_blank" rel="noopener">Ouvrir dans Figma ↗</a></p></div></div>`;
+  if (!dlg.open) dlg.showModal();
+}
+dlg.addEventListener("click", e => {
+  if (e.target === dlg || e.target.closest("[data-close]")) { dlg.close(); return; }
+});
+dlg.addEventListener("close", () => { dlgTask = null; });
+
+async function setManual(s) {
+  if (!dbRef || dlgTask == null) return;
+  const n = dlgTask;
+  try {
+    if (s === "reset") await dbRef.doc("manual/" + n).delete();
+    else await dbRef.doc("manual/" + n).set({ state: s, at: new Date().toISOString() });
+    toast(s === "reset" ? `#${n} suit de nouveau le Scrum Board` : `#${n} : ${{ todo: "À faire", dev: "En dev", review: "En review", done: "Mergée" }[s]}`);
+  } catch (e) {
+    if (e && e.code === "invalid_argument") { canWrite = false; renderDialog(); toast("Pas enregistré : tu as cette page en lecture seule."); }
+    else toast("Pas enregistré : réessaie dans un instant.");
+  }
+}
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg) { const el = document.getElementById("toast"); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 2800); }
+
+/* ---------- live GitHub ---------- */
+let source = "none", loading = false, lastLoad = 0, liveError = "", memToken = "";
+function getToken() { try { return localStorage.getItem(TOKEN_KEY) || memToken; } catch (_) { return memToken; } }
+function saveToken(v) { memToken = v; try { if (v) localStorage.setItem(TOKEN_KEY, v); else localStorage.removeItem(TOKEN_KEY); } catch (_) {} }
+function stateOf(status, issue, prs) {
+  const s = (status || "").toLowerCase();
+  if (issue === "CLOSED" || s.startsWith("done") || prs.some(p => p.state === "MERGED")) return "done";
+  if (s === "in review") return "review";
+  if (s === "in development") return "dev";
+  if (prs.some(p => p.state === "OPEN")) return "review";
+  return "todo";
+}
+const GQL = `query { repository(owner:"Shifter-Swent", name:"shifter") { ${TASKS.map(t => `i${t.n}: issue(number:${t.n}) { ...F }`).join(" ")} } }
+fragment F on Issue { number state
+  projectItems(first: 10) { nodes { project { id } status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } } } }
+  closedByPullRequestsReferences(first: 5, includeClosedPrs: true) { nodes { number state } } }`;
+async function fetchBoard(token) {
+  const r = await fetch("https://api.github.com/graphql", { method: "POST", headers: { Authorization: "bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ query: GQL }) });
+  if (r.status === 401) throw { code: "bad_token" };
+  if (!r.ok) throw { code: "http", status: r.status };
+  const j = await r.json();
+  const repo = (j.data && j.data.repository) || null;
+  if (!repo) throw { code: "gql" };
+  const items = {};
+  for (const t of TASKS) {
+    const is = repo["i" + t.n]; if (!is) continue;
+    const pi = ((is.projectItems && is.projectItems.nodes) || []).find(x => x && x.project && x.project.id === PROJECT_ID);
+    const status = (pi && pi.status && pi.status.name) || "";
+    const prs = ((is.closedByPullRequestsReferences && is.closedByPullRequestsReferences.nodes) || []).filter(Boolean).map(p => ({ n: p.number, state: p.state }));
+    items[t.n] = { status, issue: is.state, prs, state: stateOf(status, is.state, prs) };
+  }
+  if (!Object.values(items).some(x => x.status)) throw { code: "no_project" };
+  return { syncedAt: new Date().toISOString(), items };
+}
+async function fetchPublic() { // sans token : issues fermées et PR liées, par-dessus le dernier instantané du board
+  const items = JSON.parse(JSON.stringify(board.items || {}));
+  const nums = new Set(TASKS.map(t => t.n));
+  const get = n => items[n] || (items[n] = { status: "", issue: "OPEN", prs: [], state: "todo" });
+  let url = "https://api.github.com/repos/Shifter-Swent/shifter/issues?state=all&per_page=100&since=2026-11-18T00:00:00Z";
+  for (let page = 0; page < 4 && url; page++) {
+    const r = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+    if (!r.ok) throw { code: "http", status: r.status };
+    for (const it of await r.json()) {
+      if (it.pull_request) {
+        const text = (it.title || "") + " " + (it.body || "");
+        const refs = [...text.matchAll(/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi)].map(m => +m[1]).filter(n => nums.has(n));
+        const st = it.pull_request.merged_at ? "MERGED" : it.state === "closed" ? "CLOSED" : "OPEN";
+        for (const n of refs) { const x = get(n); x.prs = [...(x.prs || []).filter(p => p.n !== it.number), { n: it.number, state: st }]; }
+      } else if (nums.has(it.number)) get(it.number).issue = it.state === "closed" ? "CLOSED" : "OPEN";
+    }
+    const m = (r.headers.get("Link") || "").match(/<([^>]+)>;\s*rel="next"/);
+    url = m ? m[1] : null;
+  }
+  for (const x of Object.values(items)) { const s = stateOf(x.status, x.issue, x.prs || []); if (!STATES.includes(x.state) || RANK[s] > RANK[x.state]) x.state = s; }
+  return { syncedAt: board.syncedAt, items };
+}
+function liveMessage(e) {
+  if (e && e.code === "bad_token") return "Token refusé ou expiré : reconnecte le Scrum Board.";
+  if (e && e.code === "no_project") return "Ce token ne lit pas le Scrum Board : il lui faut read:project.";
+  if (e && e.status === 403) return "GitHub limite les requêtes : réessaie dans quelques minutes.";
+  return "GitHub ne répond pas : statut du dernier instantané.";
+}
+async function loadLive(force) {
+  if (IN_ARTIFACT || loading) return;
+  if (!force && Date.now() - lastLoad < 15000) return;
+  loading = true; lastLoad = Date.now(); renderSync();
+  const token = getToken();
+  try {
+    if (token) { board = await fetchBoard(token); source = "board"; }
+    else { board = await fetchPublic(); source = "public"; }
+    liveError = "";
+  } catch (e) { liveError = liveMessage(e); }
+  loading = false; render();
+}
+async function loadSnapshot() {
+  try { const r = await fetch("board.json", { cache: "no-store" }); if (r.ok) takeBoard(await r.json(), "snapshot"); } catch (_) {}
+}
+function openConnect() {
+  dlgTask = null;
+  dlg.innerHTML = `<div class="dlg"><div class="dlg-head"><div><h2 id="dlgTitle">Connecter le Scrum Board</h2>
+      <p class="en">Une fois par navigateur. Le token reste dans ce navigateur et sert seulement à lire le board, à chaque refresh.</p></div>
+      <button class="x" data-close aria-label="Fermer">×</button></div>
+    <div class="dlg-body">
+      <ol class="steps">
+        <li>Ouvre <a href="${TOKEN_URL}" target="_blank" rel="noopener">GitHub › New personal access token (classic) ↗</a>. La case <code>read:project</code> est déjà cochée : ne coche rien d'autre.</li>
+        <li>Choisis une expiration (par exemple 30 jours), puis clique sur Generate token.</li>
+        <li>Copie le token (il commence par <code>ghp_</code>) et colle-le ici.</li>
+      </ol>
+      <form class="tok" id="tokForm"><label for="tok">Token GitHub</label><input id="tok" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_…" required><button class="btn primary" type="submit">Connecter</button></form>
+      <p class="hint wait" id="tokMsg" hidden></p>
+      ${getToken() ? '<div><button class="btn" data-forget>Oublier mon token</button></div>' : ""}
+    </div></div>`;
+  if (!dlg.open) dlg.showModal();
+  setTimeout(() => { const i = document.getElementById("tok"); if (i) i.focus(); }, 30);
+}
+dlg.addEventListener("submit", async e => {
+  if (e.target.id !== "tokForm") return;
+  e.preventDefault();
+  const input = document.getElementById("tok"), msg = document.getElementById("tokMsg"), btn = e.target.querySelector("button");
+  const token = input.value.trim(); if (!token) return;
+  btn.disabled = true; btn.textContent = "Lecture du board…"; msg.hidden = true;
+  try {
+    board = await fetchBoard(token); source = "board"; liveError = ""; lastLoad = Date.now();
+    saveToken(token); dlg.close(); render(); toast("Scrum Board connecté : chaque refresh le relit.");
+  } catch (err) {
+    msg.textContent = liveMessage(err); msg.hidden = false; btn.disabled = false; btn.textContent = "Connecter";
+  }
+});
+
+/* ---------- render ---------- */
+function renderSync() {
+  const el = document.getElementById("sync"), txt = document.getElementById("syncText"), ctl = document.getElementById("syncCtl");
+  const fmt = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleString("fr-CH", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null; };
+  const when = fmt(board.syncedAt);
+  const nManual = Object.keys(manual).filter(k => manualState(k)).length;
+  const boardLink = `<a href="${BOARD_URL}" target="_blank" rel="noopener">Scrum Board</a>`;
+  let text, ok = false;
+  if (loading) text = `Lecture du ${boardLink}…`;
+  else if (source === "board") { text = `${boardLink} en direct · lu ${new Date(board.syncedAt).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" })}`; ok = true; }
+  else if (source === "public") text = `Issues et PR en direct · ${boardLink} du ${when || "—"}`;
+  else text = `${boardLink} · ${when ? "lu " + when : "pas encore lu"}`;
+  if (IN_ARTIFACT && live) ok = true;
+  if (nManual) text += ` · ${nManual} statut${nManual > 1 ? "s" : ""} mis à la main`;
+  if (liveError) text += ` · <span class="err">${esc(liveError)}</span>`;
+  el.classList.toggle("live", ok && !liveError);
+  el.classList.toggle("warn", !!liveError);
+  txt.innerHTML = text;
+  ctl.innerHTML = IN_ARTIFACT
+    ? `<a class="btn small" href="${PAGES_URL}" target="_blank" rel="noopener">Version en direct ↗</a>`
+    : getToken()
+      ? `<button class="btn small" data-refresh ${loading ? "disabled" : ""}>Rafraîchir</button><button class="btn small" data-connect>Token</button>`
+      : `<button class="btn small primary" data-connect>Connecter le Scrum Board</button>`;
+}
+function render() {
+  renderNav(); renderSync();
+  const r = route(), main = document.getElementById("main");
+  main.innerHTML = r === "vue" ? renderOverview() : renderPerson(r);
+  if (r === "vue") requestAnimationFrame(drawEdges);
+  if (dlg.open && dlgTask != null) renderDialog();
+}
+
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-connect]")) { openConnect(); return; }
+  if (e.target.closest("[data-refresh]")) { loadLive(true); return; }
+  if (e.target.closest("[data-forget]")) { saveToken(""); dlg.close(); source = "none"; loadSnapshot().then(() => loadLive(true)); toast("Token oublié dans ce navigateur."); return; }
+  const set = e.target.closest("[data-set]"); if (set) { setManual(set.dataset.set); return; }
+  const img = e.target.closest("[data-img]"); if (img) { openImage(img.dataset.img); return; }
+  const op = e.target.closest("[data-open]"); if (op) { e.preventDefault(); openTask(+op.dataset.open); }
+});
+const mainEl = document.getElementById("main");
+mainEl.addEventListener("mouseover", e => { const c = e.target.closest(".map .chip"); focusChain(c ? +c.dataset.n : null); });
+mainEl.addEventListener("mouseleave", () => focusChain(null));
+mainEl.addEventListener("focusin", e => { const c = e.target.closest(".map .chip"); if (c) focusChain(+c.dataset.n); });
+mainEl.addEventListener("focusout", e => { if (e.target.closest(".map .chip")) focusChain(null); });
+window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
+let rT; window.addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(drawEdges, 80); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawEdges);
+
+function takeBoard(data, src) {
+  if (source === "board" || !data || typeof data !== "object" || !data.items || typeof data.items !== "object") return;
+  const t = Date.parse(data.syncedAt), cur = Date.parse(board.syncedAt);
+  if (board.syncedAt && !(t >= cur)) return;
+  board = { syncedAt: data.syncedAt, items: data.items };
+  source = src;
+  render();
+}
+
+render();
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadLive(false); });
+(async () => {
+  if (IN_ARTIFACT) { await loadSnapshot(); return; }
+  if (getToken()) { await loadLive(true); if (source === "board") return; }
+  await loadSnapshot();
+  if (!getToken()) await loadLive(true);
+})();
+
+(async () => {
+  if (!IN_ARTIFACT) return;
+  let db = null;
+  try { db = await window.claude.use("db"); } catch (_) { db = null; }
+  if (!db) return;
+  dbRef = db; live = true; renderSync();
+  try { const u = await window.claude.use("user"); if (u) canWrite = await u.can("data.write"); } catch (_) { canWrite = null; }
+  db.doc("meta/board").onSnapshot(s => { if (s.exists) takeBoard(s.data(), "db"); }, () => { live = false; renderSync(); });
+  db.collection("manual").onSnapshot(q => {
+    const m = {};
+    q.docs.forEach(d => { const x = d.data(); if (x && STATES.includes(x.state) && BY[+d.id]) m[d.id] = { state: x.state, at: x.at }; });
+    manual = m; render();
+  }, () => {});
+  render();
+})();
+</script>
+
+</body>
+</html>
