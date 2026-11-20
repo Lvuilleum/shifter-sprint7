@@ -125,14 +125,22 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 .nav a.all-done svg { width: 13px; height: 13px; }
 .nav .cnt { font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-3); }
 .live { display: flex; align-items: center; gap: 14px; justify-content: flex-end; }
-.sync { display: inline-flex; align-items: center; gap: 8px; font-family: var(--f-mono); font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+.sync-wrap { position: relative; display: inline-flex; }
+.sync { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(236, 238, 242, .05); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; transition: background-color .3s, box-shadow .3s; }
+.sync:hover, .sync:focus-visible { background: rgba(236, 238, 242, .1); box-shadow: inset 0 0 0 1px var(--line-2); }
+.sync:disabled { cursor: progress; }
+.sync.loading .dot { animation: breathe 1s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: .3; } }
+.sync-pop { position: absolute; top: calc(100% + 10px); right: 0; z-index: 6; display: grid; gap: 4px; padding: 10px 14px; border-radius: 14px; background: rgba(16, 19, 26, .94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: inset 0 0 0 1px var(--line-2), 0 16px 40px rgba(0, 0, 0, .45); font-family: var(--f-mono); font-size: 13px; line-height: 1.35; color: var(--ink-2); white-space: nowrap; opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .25s, transform .4s var(--ease-out), visibility 0s .25s; }
+.sync-pop::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; height: 12px; }
+.sync-pop .hint { color: var(--ink-3); font-size: 12px; }
+.sync-wrap:hover .sync-pop, .sync-wrap:focus-within .sync-pop { opacity: 1; visibility: visible; transform: none; transition: opacity .25s, transform .4s var(--ease-out), visibility 0s; }
 .sync .dot { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); flex: none; }
 .sync.live .dot { background: var(--green); }
 .sync.live .dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1px solid var(--green); opacity: 0; animation: ping 2.4s var(--ease-out) infinite; }
 .sync.warn .dot { background: var(--amber); }
 .sync .err { color: var(--amber); }
 @keyframes ping { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
-@media (max-width: 1699px) { .sync .txt { display: none; } }
 @media (max-width: 640px) { .brand .eyebrow { display: none; } }
 @media (max-width: 1359px) {
   .top-row { grid-template-columns: minmax(0, 1fr) auto; }
@@ -141,7 +149,6 @@ code { font-family: var(--f-code); font-size: .82em; color: var(--ink); }
 @media (max-width: 820px) {
   .nav-inner { flex-wrap: wrap; width: 100%; }
   .nav a { flex: 1 0 auto; justify-content: center; }
-  .sync .txt { display: none; }
 }
 
 /* Heads and sections */
@@ -293,7 +300,7 @@ main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); 
 .empty { padding: 28px; border-radius: var(--r-lg); border: 1px dashed var(--line-2); color: var(--ink-2); }
 
 /* Dialog */
-dialog { border: 0; padding: 0; border-radius: 24px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 220px 220px, radial-gradient(90% 60% at 10% 0%, rgba(39, 100, 236, .10), transparent 65%), linear-gradient(160deg, #1a1f2a 0%, #141821 55%, #11141b 100%); background-blend-mode: soft-light, normal, normal; color: var(--ink); width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 120px rgba(0, 0, 0, .6); }
+dialog { border: 0; padding: 0; border-radius: 24px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 220px 220px, radial-gradient(90% 60% at 10% 0%, rgba(39, 100, 236, .10), transparent 65%), linear-gradient(160deg, #14181f 0%, #0f1218 55%, #0c0e13 100%); background-blend-mode: soft-light, normal, normal; color: var(--ink); width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 120px rgba(0, 0, 0, .6); }
 dialog::backdrop { background: rgba(4, 6, 10, .66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .dlg { display: grid; grid-template-rows: auto 1fr; max-height: calc(100vh - 48px); }
 .dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 28px 32px 22px; border-bottom: 1px solid var(--line); }
@@ -362,7 +369,7 @@ ol.steps a { color: var(--ink); border-bottom: 1px solid var(--line-2); }
   <div class="wrap top-row">
     <a class="brand" href="#vue"><img class="logo" src="img/logo.png" alt="" width="30" height="30">Shifter <span class="eyebrow">sprint 7</span></a>
     <nav class="nav" aria-label="Vues"><div class="nav-inner" id="nav"></div></nav>
-    <div class="live"><span class="sync" id="sync"><span class="dot"></span><span class="txt" id="syncText">Lecture du board</span></span><span id="syncCtl"></span></div>
+    <div class="live"><div class="sync-wrap"><button type="button" class="sync" id="sync" aria-describedby="syncPop"><span class="dot"></span></button><div class="sync-pop" role="tooltip" id="syncPop"><span id="syncText">Lecture du board</span><span class="hint" id="syncHint"></span></div></div><span id="syncCtl"></span></div>
   </div>
 </header>
 
@@ -793,14 +800,21 @@ function renderSync() {
   el.classList.toggle("live", ok && !liveError);
   el.classList.toggle("warn", !!liveError);
   txt.innerHTML = text;
-  el.title = txt.textContent;
-  const sig = IN_ARTIFACT ? "a" : getToken() ? "t" + loading : "n";
+  // The dot is the control: with a token it re-reads the board, otherwise it opens the connect pop-up
+  const canRead = !IN_ARTIFACT && !!getToken();
+  el.classList.toggle("loading", !!loading);
+  el.disabled = !!loading;
+  el.toggleAttribute("data-refresh", canRead);
+  el.toggleAttribute("data-connect", !IN_ARTIFACT && !canRead);
+  document.getElementById("syncHint").innerHTML = loading ? "" : canRead ? "Cliquer pour relire · <button class=\"tlink\" data-connect>token</button>" : IN_ARTIFACT ? "" : "Cliquer pour connecter le board";
+  el.setAttribute("aria-label", txt.textContent + (canRead ? ", relire le board" : ""));
+  const sig = IN_ARTIFACT ? "a" : getToken() ? "t" : "n";
   if (ctl.dataset.sig === sig) return;
   ctl.dataset.sig = sig;
   ctl.innerHTML = IN_ARTIFACT
     ? abtn("Version en direct", PAGES_URL)
     : getToken()
-      ? `<span class="live">${btn("Relire", `data-refresh ${loading ? "disabled" : ""}`, "dark", false)}<button class="tlink" data-connect>token</button></span>`
+      ? ""
       : btn("Connecter le board", "data-connect", "blue");
   rollify(ctl);
 }
