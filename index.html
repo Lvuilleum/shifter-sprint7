@@ -1231,7 +1231,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
   /* Magnet, in Lenis terms. Snap points are the titles (page top + each section head, 36px under
      the header). Near a title the wheel meets friction, so even a steady scroll slows as it
      passes one; when the wheel goes quiet near a title, the page glides onto it. */
-  const ZONE = 170, MIN = .28, GAP = 36;
+  const ZONE = 170, MIN = .28, GAP = 36, LERP_TITLE = .2, LERP_FREE = .4;
   const points = () => {
     const off = (document.querySelector(".top")?.offsetHeight || 0) + GAP, ys = [0];
     document.querySelectorAll("main .sec-head").forEach(h => { if (h.offsetParent) ys.push(Math.round(h.getBoundingClientRect().top + scrollY - off)); });
@@ -1248,7 +1248,9 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
     virtualScroll: d => {
       if (!d.event.type.includes("wheel") || d.event.ctrlKey) return true;
       const y = lenis.targetScroll, dist = Math.abs(nearest(y + d.deltaY * .5) - (y + d.deltaY * .5));
-      if (dist < ZONE) { const k = dist / ZONE; d.deltaY *= MIN + (1 - MIN) * k * k * (3 - 2 * k); }
+      const k = Math.min(1, dist / ZONE), ease = k * k * (3 - 2 * k);
+      d.deltaY *= MIN + (1 - MIN) * ease;
+      lenis.options.lerp = LERP_TITLE + (LERP_FREE - LERP_TITLE) * ease;   // soft near titles, quick elsewhere
       clearTimeout(idle); idle = setTimeout(settle, 140);
       return true;
     }
