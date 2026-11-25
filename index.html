@@ -158,6 +158,8 @@ html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
 .lenis.lenis-stopped { overflow: hidden; }
 main { padding-block: 56px 160px; display: grid; gap: clamp(96px, 12vw, 168px); }
+/* A section is as wide as the page, not as its widest content: the map scrolls in its own frame */
+main > * { min-width: 0; }
 .sec-head { display: grid; gap: 14px; margin-bottom: 40px; max-width: 900px; }
 .sec-head .dim { font-size: 17px; }
 
