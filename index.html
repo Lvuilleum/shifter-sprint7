@@ -300,6 +300,24 @@ main > * { min-width: 0; }
 .merged .r b { font-weight: 500; }
 .empty { padding: 28px; border-radius: var(--r-lg); border: 1px dashed var(--line-2); color: var(--ink-2); }
 
+/* Reviews: the open PRs, in the order to review them */
+.tag.p0 { color: #ff7b6e; } .tag.p1 { color: var(--amber); } .tag.p2 { color: var(--ink-3); }
+.revs { border-top: 1px solid var(--line); }
+.rv { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px 24px; align-items: center; padding-block: 20px; border-bottom: 1px solid var(--line); }
+.rv .ord { font-family: var(--f-display); font-size: 30px; line-height: 1; color: var(--blue-hi); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.rv-main { display: grid; gap: 10px; min-width: 0; }
+.rv-title { font-family: var(--f-display); font-weight: 460; font-size: clamp(19px, 1.6vw, 23px); line-height: 1.15; letter-spacing: -.015em; overflow-wrap: anywhere; transition: color .2s; }
+.rv-title:hover { color: var(--blue-hi); }
+.rv-title .num { font-family: var(--f-mono); font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--ink-3); margin-right: 6px; }
+.rv-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.rv.later { opacity: .55; }
+.rv-sep { padding: 32px 0 12px; border-bottom: 1px solid var(--line); }
+@media (max-width: 640px) {
+  .rv { grid-template-columns: 32px minmax(0, 1fr); }
+  .rv .ord { font-size: 24px; }
+  .rv > .pill { grid-column: 2; justify-self: start; }
+}
+
 /* Dialog */
 dialog { border: 0; padding: 0; border-radius: 24px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 220px 220px, radial-gradient(90% 60% at 10% 0%, rgba(39, 100, 236, .10), transparent 65%), linear-gradient(160deg, #14181f 0%, #0f1218 55%, #0c0e13 100%); background-blend-mode: soft-light, normal, normal; color: var(--ink); width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 120px rgba(0, 0, 0, .6); }
 dialog::backdrop { background: rgba(4, 6, 10, .66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
@@ -703,7 +721,8 @@ function stateOf(status, issue, prs) {
 }
 const GQL = `query { repository(owner:"Shifter-Swent", name:"shifter") { ${TASKS.map(t => `i${t.n}: issue(number:${t.n}) { ...F }`).join(" ")} } }
 fragment F on Issue { number state
-  projectItems(first: 10) { nodes { project { id } status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } } } }
+  projectItems(first: 10) { nodes { project { id } status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
+    priority: fieldValueByName(name: "Priority") { ... on ProjectV2ItemFieldSingleSelectValue { name } } } }
   closedByPullRequestsReferences(first: 5, includeClosedPrs: true) { nodes { number state } } }`;
 async function fetchBoard(token) {
   const r = await fetch("https://api.github.com/graphql", { method: "POST", headers: { Authorization: "bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ query: GQL }) });
@@ -718,7 +737,8 @@ async function fetchBoard(token) {
     const pi = ((is.projectItems && is.projectItems.nodes) || []).find(x => x && x.project && x.project.id === PROJECT_ID);
     const status = (pi && pi.status && pi.status.name) || "";
     const prs = ((is.closedByPullRequestsReferences && is.closedByPullRequestsReferences.nodes) || []).filter(Boolean).map(p => ({ n: p.number, state: p.state }));
-    items[t.n] = { status, issue: is.state, prs, state: stateOf(status, is.state, prs) };
+    const prio = (pi && pi.priority && pi.priority.name) || "";
+    items[t.n] = { status, prio, issue: is.state, prs, state: stateOf(status, is.state, prs) };
   }
   if (!Object.values(items).some(x => x.status)) throw { code: "no_project" };
   return { syncedAt: new Date().toISOString(), items };
@@ -745,6 +765,97 @@ async function fetchPublic() {
   for (const x of Object.values(items)) { const s = stateOf(x.status, x.issue, x.prs || []); if (!STATES.includes(x.state) || RANK[s] > RANK[x.state]) x.state = s; }
   return { syncedAt: board.syncedAt, items };
 }
+/* ---------- reviews ---------- */
+// The open PRs of the repo, read with the board. With a token, their reviews too: without one,
+// GitHub answers anonymous clients too rarely to read the reviews of each PR.
+let reviews = { list: null, known: false, failed: false };
+const PGH = Object.fromEntries(PEOPLE.map(p => [p.gh.toLowerCase(), p]));
+const nameOf = login => (PGH[String(login || "").toLowerCase()] || {}).name || login || "?";
+const PRIO_RANK = { P0: 0, P1: 1, P2: 2 };
+// "Closes #N" and its variants, and "Part of #N", which a PR uses for a task it only partly does
+const REF_RE = /\b(close[sd]?|fix(?:e[sd])?|resolve[sd]?|part of)\s+#(\d+)/gi;
+function refsOf(text, closing) {
+  const refs = [...String(text || "").matchAll(REF_RE)].map(m => ({ n: +m[2], closes: !/^part/i.test(m[1]) }));
+  for (const n of closing) if (!refs.some(r => r.n === n)) refs.push({ n, closes: true });
+  return refs;
+}
+const GQL_PRS = `query { repository(owner:"Shifter-Swent", name:"shifter") { pullRequests(states: OPEN, first: 60, orderBy: {field: CREATED_AT, direction: ASC}) { nodes {
+  number title body url isDraft createdAt reviewDecision author { login }
+  reviewRequests(first: 10) { nodes { requestedReviewer { ... on User { login } } } }
+  latestOpinionatedReviews(first: 20) { nodes { state submittedAt } }
+  commits(last: 1) { nodes { commit { committedDate } } }
+  closingIssuesReferences(first: 5) { nodes { number projectItems(first: 5) { nodes { project { id } priority: fieldValueByName(name: "Priority") { ... on ProjectV2ItemFieldSingleSelectValue { name } } } } } }
+} } } }`;
+function prsFromGraphql(nodes) {
+  return nodes.filter(Boolean).map(p => {
+    const prios = {}, closing = [];
+    for (const i of ((p.closingIssuesReferences && p.closingIssuesReferences.nodes) || []).filter(Boolean)) {
+      closing.push(i.number);
+      const pi = ((i.projectItems && i.projectItems.nodes) || []).find(x => x && x.project && x.project.id === PROJECT_ID);
+      if (pi && pi.priority && pi.priority.name) prios[i.number] = pi.priority.name;
+    }
+    const changesAt = ((p.latestOpinionatedReviews && p.latestOpinionatedReviews.nodes) || [])
+      .filter(x => x && x.state === "CHANGES_REQUESTED").map(x => x.submittedAt).sort().pop() || null;
+    const last = p.commits && p.commits.nodes && p.commits.nodes[0];
+    return {
+      n: p.number, title: p.title, url: p.url, author: p.author && p.author.login, created: p.createdAt, draft: !!p.isDraft,
+      requested: ((p.reviewRequests && p.reviewRequests.nodes) || []).map(x => x && x.requestedReviewer && x.requestedReviewer.login).filter(Boolean),
+      decision: p.reviewDecision || null, changesAt, lastCommit: (last && last.commit && last.commit.committedDate) || null,
+      refs: refsOf(p.title + " " + (p.body || ""), closing), prios,
+    };
+  });
+}
+async function fetchReviews(token) {
+  if (!token) {
+    const r = await fetch("https://api.github.com/repos/Shifter-Swent/shifter/pulls?state=open&per_page=100", { headers: { Accept: "application/vnd.github+json" } });
+    if (!r.ok) throw { code: "http", status: r.status };
+    const list = (await r.json()).map(p => ({
+      n: p.number, title: p.title, url: p.html_url, author: p.user && p.user.login, created: p.created_at, draft: !!p.draft,
+      requested: (p.requested_reviewers || []).map(u => u.login), decision: null, changesAt: null, lastCommit: null,
+      refs: refsOf(p.title + " " + (p.body || ""), []), prios: {},
+    }));
+    return { list, known: false, failed: false };
+  }
+  const r = await fetch("https://api.github.com/graphql", { method: "POST", headers: { Authorization: "bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ query: GQL_PRS }) });
+  if (!r.ok) throw { code: "http", status: r.status };
+  const j = await r.json();
+  const nodes = j.data && j.data.repository && j.data.repository.pullRequests && j.data.repository.pullRequests.nodes;
+  if (!nodes) throw { code: "gql" };
+  return { list: prsFromGraphql(nodes), known: true, failed: false };
+}
+function loadReviews(token) {
+  return fetchReviews(token).then(x => { reviews = x; }, () => { if (!reviews.list) reviews = { list: null, known: false, failed: true }; });
+}
+/*
+ * The order to review the open PRs in: first the P0 and those that unblock other tasks, the ones
+ * that unblock the most first, then those that plug in the most, then P1, P2 and the rest, the
+ * oldest first. Those waiting for their author (changes requested and nothing pushed since, or a
+ * draft) go last. The approved ones are out: they wait for their merge, not for a review.
+ */
+function reviewOrder() {
+  if (!reviews.list) return null;
+  const rows = reviews.list.filter(p => p.decision !== "APPROVED").map(p => {
+    // The sprint task the PR does, rather than the user story its description names too
+    const pick = p.refs.find(r => BY[r.n] && r.closes) || p.refs.find(r => BY[r.n]) || p.refs.find(r => r.closes) || p.refs[0];
+    const task = pick ? pick.n : null;
+    const item = task ? board.items[String(task)] : null;
+    const prio = (task && (p.prios[task] || (item && item.prio) || (BY[task] && BY[task].prio))) || "";
+    const open = !!(task && BY[task] && !isDone(task));
+    const unblocks = open ? [...allDependents(task)].filter(d => !isDone(d)) : [];
+    const plugs = open ? TASKS.filter(t => t.wires.includes(task) && !isDone(t.n)).map(t => t.n) : [];
+    const state = p.draft ? "draft"
+      : p.decision === "CHANGES_REQUESTED" ? (p.lastCommit && p.changesAt && p.lastCommit > p.changesAt ? "again" : "author")
+      : "todo";
+    return { ...p, task, prio, unblocks, plugs, state };
+  });
+  const later = r => (r.state === "author" || r.state === "draft") ? 1 : 0;
+  const top = r => (r.prio === "P0" || r.unblocks.length) ? 0 : 1;
+  const rank = r => r.prio in PRIO_RANK ? PRIO_RANK[r.prio] : 3;
+  rows.sort((a, b) => later(a) - later(b) || top(a) - top(b) || b.unblocks.length - a.unblocks.length
+    || b.plugs.length - a.plugs.length || rank(a) - rank(b) || String(a.created).localeCompare(String(b.created)));
+  return { rows, approved: reviews.list.length - rows.length };
+}
+
 function liveMessage(e) {
   if (e && e.code === "bad_token") return "Token refusé ou expiré.";
   if (e && e.code === "no_project") return "Ce token n'a pas read:project.";
@@ -756,11 +867,13 @@ async function loadLive(force) {
   if (!force && Date.now() - lastLoad < 15000) return;
   loading = true; lastLoad = Date.now(); renderSync();
   const token = getToken();
+  const prs = loadReviews(token);
   try {
     if (token) { board = await fetchBoard(token); source = "board"; }
     else { board = await fetchPublic(); source = "public"; }
     liveError = "";
   } catch (e) { liveError = liveMessage(e); }
+  await prs;
   loading = false; render();
 }
 async function loadSnapshot() {
@@ -835,6 +948,45 @@ function bar(counts, total) {
   return `<div class="bar" role="img" aria-label="${counts.done || 0} mergées sur ${total}">${seg("done")}${seg("review")}${seg("dev")}${seg("ready")}${seg("wait")}</div>`;
 }
 
+const REV_STATE = { todo: ["review", "À reviewer"], again: ["ready", "À re-reviewer"], author: ["wait", "Attend l'auteur"], draft: ["wait", "Brouillon"] };
+const RULE = "D'abord les P0 et celles qui débloquent d'autres PR, puis les P1 et les P2, la plus ancienne d'abord.";
+function reviewsSection() {
+  const o = reviewOrder();
+  const head = (count, text) => `<div class="sec-head"><p class="eyebrow">Reviews${count != null ? ` · ${count}` : ""}</p>
+      <h2 class="h-medium" id="h-rev" data-split>L'ordre des reviews.</h2><p class="dim">${text}</p></div>`;
+  if (!o) {
+    const text = IN_ARTIFACT ? "Ouvre la version en direct pour lire les PR ouvertes."
+      : reviews.failed ? "GitHub ne répond pas : les PR ouvertes n'ont pas pu être lues." : "Lecture des PR ouvertes…";
+    return `<section aria-labelledby="h-rev">${head(null, text)}</section>`;
+  }
+  const { rows, approved } = o;
+  const now = rows.filter(r => r.state === "todo" || r.state === "again");
+  let text = RULE;
+  if (!reviews.known) text += " Connecte le board pour voir où en est chaque review.";
+  if (approved) text += ` ${approved} déjà approuvée${approved > 1 ? "s" : ""}, à merger.`;
+  const chips = (k, ns) => ns.length ? `<span class="eyebrow">${k}</span>${ns.slice(0, 6).map(n => mini(n)).join("")}${ns.length > 6 ? `<span class="tag">+${ns.length - 6}</span>` : ""}` : "";
+  const row = (r, i) => {
+    const later = r.state === "author" || r.state === "draft";
+    const st = REV_STATE[r.state];
+    const showState = reviews.known || r.state === "draft";
+    const task = !r.task ? "" : BY[r.task] ? mini(r.task, false)
+      : `<a class="ulink" href="${REPO}/issues/${r.task}" target="_blank" rel="noopener">#${r.task} ↗</a>`;
+    const asked = r.requested.length ? `<span class="eyebrow">demandée à ${r.requested.map(l => esc(nameOf(l))).join(", ")}</span>` : "";
+    return `<div class="rv${later ? " later" : ""}">
+      <span class="ord" aria-hidden="true">${later ? "" : i + 1}</span>
+      <div class="rv-main"><a class="rv-title" href="${esc(r.url)}" target="_blank" rel="noopener"><span class="num">#${r.n}</span>${esc(r.title)}</a>
+        <div class="rv-meta"><span class="eyebrow">${esc(nameOf(r.author))}</span>${r.prio ? `<span class="tag ${r.prio.toLowerCase()}">${r.prio}</span>` : ""}${task}${chips("débloque", r.unblocks)}${chips("branche", r.plugs)}${asked}</div></div>
+      ${showState ? pill(st[0], st[1]) : ""}
+    </div>`;
+  };
+  const waiting = rows.filter(r => !now.includes(r));
+  const list = now.map(row).join("")
+    + (waiting.length ? `<p class="eyebrow rv-sep">Attendent leur auteur · ${waiting.length}</p>${waiting.map(row).join("")}` : "");
+  return `<section aria-labelledby="h-rev">${head(now.length, text)}
+    ${rows.length ? `<div class="revs">${list}</div>` : `<div class="empty">Aucune PR à reviewer.</div>`}
+  </section>`;
+}
+
 function renderOverview() {
   const counts = { done: 0, review: 0, dev: 0, ready: 0, wait: 0 };
   let minDone = 0, minAll = 0;
@@ -878,6 +1030,8 @@ function renderOverview() {
     ${bar(counts, total)}
     <div class="legend eyebrow"><span><i style="background:var(--green)"></i>Mergée</span><span><i style="background:var(--ink)"></i>En cours</span><span><i style="background:var(--blue)"></i>Prête</span><span><i style="background:var(--amber)"></i>En attente</span></div>
   </section>
+
+  ${reviewsSection()}
 
   <section aria-labelledby="h-d1">
     <div class="sec-head"><p class="eyebrow">Jour 1</p><h2 class="h-medium" id="h-d1" data-split>Les contrats d'abord.</h2>
@@ -1042,6 +1196,7 @@ dlg.addEventListener("submit", async e => {
   try {
     board = await fetchBoard(token); source = "board"; liveError = ""; lastLoad = Date.now();
     saveToken(token); dlg.close(); render(); toast("Board connecté. Chaque refresh le relit.");
+    loadReviews(token).then(render);
   } catch (err) { msg.textContent = liveMessage(err); input.setAttribute("aria-invalid", "true"); b.disabled = false; }
 });
 async function setManual(s) {
@@ -1111,7 +1266,7 @@ function introView() {
   G.from(main.querySelectorAll(".bar span"), { scaleX: 0, duration: 1.4, ease: "expo.out", stagger: .08, delay: .35 });
   const firstH2 = main.querySelectorAll("section")[1];
   if (firstH2) G.from(firstH2.querySelectorAll(".wi"), { yPercent: 115, duration: 1.1, ease: "expo.out", stagger: .04, delay: .3 });
-  G.from(main.querySelectorAll(".d1, .task, .side .card"), { y: 40, opacity: 0, duration: 1.1, ease: "expo.out", stagger: .07, delay: .4, clearProps: "transform,opacity" });
+  G.from(main.querySelectorAll(".d1, .task, .side .card, .rv"), { y: 40, opacity: 0, duration: 1.1, ease: "expo.out", stagger: .07, delay: .4, clearProps: "transform,opacity" });
 }
 function drawEdges(animate) {
   const mapEl = document.getElementById("map"), svg = document.getElementById("edges");
@@ -1166,7 +1321,7 @@ function render() {
   renderNav(); renderSync();
   if (!ready) return;
   const r = route();
-  const sig = JSON.stringify([r, board.items, manual]);
+  const sig = JSON.stringify([r, board.items, manual, reviews]);
   const routeChanged = r !== lastRoute;
   if (sig === lastSig && !routeChanged) return;
   lastSig = sig;
